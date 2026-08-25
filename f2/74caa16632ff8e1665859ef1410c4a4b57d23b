@@ -1,0 +1,66 @@
+.gitignore
+  h_9c8c4b23da7963 1-19
+go.mod
+  h_9c8c4b23da7963 1-9
+go.sum
+  h_9c8c4b23da7963 1-6
+internal/delivery/http/handler.go
+  h_9c8c4b23da7963 1-466
+internal/delivery/ws/hub.go
+  h_9c8c4b23da7963 1-536
+internal/domain/entities.go
+  h_9c8c4b23da7963 1-271
+internal/dto/dtos.go
+  h_9c8c4b23da7963 1-176
+internal/mapper/mapper.go
+  h_9c8c4b23da7963 1-101
+internal/repository/interfaces.go
+  h_9c8c4b23da7963 1-78
+internal/repository/memory/memory_repo.go
+  h_9c8c4b23da7963 1-966
+internal/repository/postgres/postgres_repo.go
+  h_9c8c4b23da7963 1-1233
+internal/usecase/favorite_usecase.go
+  h_9c8c4b23da7963 1-82
+internal/usecase/model_safety_usecases.go
+  h_9c8c4b23da7963 1-194
+internal/usecase/model_safety_usecases_test.go
+  h_9c8c4b23da7963 1-112
+internal/usecase/payment_usecase.go
+  h_9c8c4b23da7963 1-309
+internal/usecase/payment_usecase_test.go
+  h_9c8c4b23da7963 1-189
+internal/usecase/usecase_test.go
+  h_9c8c4b23da7963 1-160
+internal/usecase/usecases.go
+  h_9c8c4b23da7963 1-238
+main.go
+  h_9c8c4b23da7963 1-152
+pkg/db/postgres.go
+  h_9c8c4b23da7963 1-586
+pkg/handlers/handlers.go
+  h_9c8c4b23da7963 1-243
+pkg/models/models.go
+  h_9c8c4b23da7963 1-146
+pkg/signaling/hub.go
+  h_9c8c4b23da7963 1-879
+pkg/store/store.go
+  h_9c8c4b23da7963 1-670
+pkg/store/store_test.go
+  h_9c8c4b23da7963 1-155
+schema.sql
+  h_9c8c4b23da7963 1-211
+web/index.html
+  h_9c8c4b23da7963 1-1912
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f274caa16632ff8e1665859ef1410c4a4b57d23b",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
