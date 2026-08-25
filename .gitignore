@@ -1,5 +1,7 @@
 # Binaries
 Connect
+connect-*
+*-linux-*
 *.exe
 *.exe~
 *.dll

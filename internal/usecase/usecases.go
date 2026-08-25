@@ -98,16 +98,22 @@ func NewCallUseCase(cRepo repository.CallRepository, uRepo repository.UserReposi
 	return &CallUseCase{callRepo: cRepo, userRepo: uRepo, walletRepo: wRepo, mapper: m}
 }
 
-func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string) (*domain.CallRecord, error) {
+func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string, callTypeOpt ...string) (*domain.CallRecord, error) {
 	receiver, err := uc.userRepo.GetByID(receiverID)
 	if err != nil {
 		return nil, fmt.Errorf("host not found")
 	}
 
+	callType := "voice"
+	if len(callTypeOpt) > 0 && callTypeOpt[0] != "" {
+		callType = callTypeOpt[0]
+	}
+
+	rate := receiver.VoiceRatePerMin
 	// Balance Check
 	wallet, err := uc.walletRepo.GetWallet(caller.ID)
-	if err != nil || wallet.Balance < receiver.VoiceRatePerMin {
-		return nil, fmt.Errorf("insufficient balance: minimum ₹%.2f required for 1 min call", receiver.VoiceRatePerMin)
+	if err != nil || wallet.Balance < rate {
+		return nil, fmt.Errorf("insufficient balance: minimum ₹%.2f required for 1 min call", rate)
 	}
 
 	if receiver.IsBusy {
@@ -121,9 +127,9 @@ func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string) (*do
 		CallerName:   caller.Name,
 		ReceiverID:   receiver.ID,
 		ReceiverName: receiver.Name,
-		CallType:     "voice",
+		CallType:     callType,
 		Status:       domain.CallStatusRinging,
-		RatePerMin:   receiver.VoiceRatePerMin,
+		RatePerMin:   rate,
 		CreatedAt:    time.Now(),
 	}
 

@@ -564,6 +564,97 @@
             box-shadow: 0 8px 20px rgba(0, 230, 118, 0.4);
         }
 
+        .btn-video {
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #7928CA 0%, #FF0080 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-video:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 0, 128, 0.4);
+        }
+
+        .btn-cam-toggle {
+            height: 52px;
+            padding: 0 16px;
+            border-radius: 26px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-cam-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.04);
+        }
+
+        .btn-cam-toggle.is-off {
+            background: rgba(255, 82, 82, 0.25);
+            border-color: #FF5252;
+            color: #FF8A80;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            max-height: 48vh;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+            margin: 8px 0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remote-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #0d1117;
+        }
+
+        .local-video-pip {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 90px;
+            height: 120px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #1a2233;
+            border: 2px solid #FF3366;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            z-index: 10;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .local-video-pip:hover {
+            transform: scale(1.05);
+        }
+
         .btn-mute-toggle {
             height: 52px;
             padding: 0 18px;
@@ -691,7 +782,7 @@
 <body>
 
     <!-- Hidden Remote Audio Element for Real Voice Playback -->
-    <audio id="remote-audio-player" autoplay></audio>
+    <audio id="remote-audio-player" autoplay playsinline></audio>
 
     <div class="top-account-bar">
         <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Active Tab Profile:</span>
@@ -898,15 +989,28 @@
 
         <!-- Fullscreen Call Overlay -->
         <div class="call-overlay" id="call-modal">
-            <div>
+            <!-- Video Container (Active for Video Calls) -->
+            <div id="call-video-box" class="video-container" style="display: none;">
+                <video id="remote-video-player" class="remote-video" autoplay playsinline></video>
+                <video id="local-video-player" class="local-video-pip" autoplay playsinline muted></video>
+                <div id="video-connecting-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;">
+                    <div style="font-size: 2.2rem; margin-bottom: 6px;">📹</div>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: #fff;">Starting HD Video Stream...</span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">P2P DTLS-SRTP Encrypted</span>
+                </div>
+            </div>
+
+            <!-- Voice Container (Active for Voice Calls) -->
+            <div id="call-voice-box">
                 <img id="call-modal-avatar" src="" class="call-avatar">
                 <h2 id="call-modal-name" style="font-size: 1.2rem;">Calling...</h2>
                 <div class="mic-live-tag" id="mic-live-tag" style="display: none;">
                     <span>🎙️</span> Real Voice Mic Live (WebRTC)
                 </div>
-                <p id="call-modal-status" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px;">Connecting...</p>
-                <div class="call-timer" id="call-timer-text">00:00</div>
             </div>
+
+            <p id="call-modal-status" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px;">Connecting...</p>
+            <div class="call-timer" id="call-timer-text">00:00</div>
 
             <div id="group-participants-container" style="display: none; width: 100%;">
                 <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 4px;">Live Audio Participants:</div>
@@ -937,10 +1041,14 @@
 
             <div class="call-controls" id="incoming-controls" style="display: none;">
                 <button class="btn-hangup" onclick="rejectCall()">✕</button>
-                <button class="btn-accept" onclick="acceptCall()">✓</button>
+                <button class="btn-accept" id="btn-accept-call" onclick="acceptCall()">✓</button>
             </div>
 
-            <div class="call-controls" id="active-controls" style="display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
+            <div class="call-controls" id="active-controls" style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <button id="btn-toggle-cam" class="btn-cam-toggle" style="display: none;" onclick="toggleCamera()">
+                    <span id="cam-icon">📹</span>
+                    <span id="cam-label">Cam</span>
+                </button>
                 <button id="btn-toggle-mute" class="btn-mute-toggle" onclick="toggleMute()">
                     <span id="mute-icon">🎙️</span>
                     <span id="mute-label">Mute</span>
@@ -971,12 +1079,34 @@
         // WebRTC Variables for Real Microphone Audio
         let peerConnection = null;
         let localMediaStream = null;
+        let iceCandidatesQueue = [];
+        let isSettingUpWebRTC = false;
+
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' },
+                {
+                    urls: [
+                        "turn:openrelay.metered.ca:80",
+                        "turn:openrelay.metered.ca:443",
+                        "turn:openrelay.metered.ca:443?transport=tcp"
+                    ],
+                    username: "openrelayproject",
+                    credential: "openrelayproject"
+                }
+            ],
+            iceCandidatePoolSize: 10
         };
+
+        const basePath = window.location.pathname.startsWith('/connect') ? '/connect' : '';
+        function apiURL(path) {
+            return `${basePath}${path}`;
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('role') && PROFILES[urlParams.get('role')]) {
@@ -992,7 +1122,7 @@
             if (activeBtn) activeBtn.classList.add('active');
 
             const p = PROFILES[key];
-            const res = await fetch('/api/auth/register', {
+            const res = await fetch(apiURL('/api/auth/register'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(p)
@@ -1019,7 +1149,8 @@
         function connectWebSocket() {
             if (ws) ws.close();
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${authToken}`);
+            const wsPath = window.location.pathname.startsWith('/connect') ? '/connect/ws' : '/ws';
+            ws = new WebSocket(`${protocol}//${window.location.host}${wsPath}?token=${authToken}`);
 
             ws.onopen = () => {
                 console.log("WebSocket connected for:", currentUser.name);
@@ -1083,13 +1214,13 @@
                     break;
                 // WebRTC Signaling Handlers (Real Voice Audio Streaming)
                 case "WEBRTC_OFFER":
-                    handleRemoteOffer(msg);
+                    await handleRemoteOffer(msg);
                     break;
                 case "WEBRTC_ANSWER":
-                    handleRemoteAnswer(msg);
+                    await handleRemoteAnswer(msg);
                     break;
                 case "WEBRTC_ICE_CANDIDATE":
-                    handleRemoteIceCandidate(msg);
+                    await handleRemoteIceCandidate(msg);
                     break;
 
                 // Group Calls
@@ -1135,16 +1266,59 @@
         }
 
         // ==========================================
-        // Real WebRTC Voice Audio Pipeline
+        // Real WebRTC Voice & HD Video Pipeline
         // ==========================================
+        let isVideoOff = false;
+
         async function setupWebRTCPeerConnection(isCaller) {
-            closeWebRTC();
+            if (peerConnection && isSettingUpWebRTC) return;
+            isSettingUpWebRTC = true;
+
+            if (peerConnection) {
+                closeWebRTC();
+            }
+            iceCandidatesQueue = [];
+
+            const isVideoCall = currentCall && currentCall.callType === 'video';
 
             try {
-                localMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                document.getElementById('mic-live-tag').style.display = 'inline-flex';
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const mediaConstraints = {
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        },
+                        video: isVideoCall ? {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: "user"
+                        } : false
+                    };
+
+                    localMediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+
+                    if (isVideoCall) {
+                        const localVid = document.getElementById('local-video-player');
+                        if (localVid) {
+                            localVid.srcObject = localMediaStream;
+                            localVid.play().catch(() => {});
+                        }
+                    }
+
+                    const micTag = document.getElementById('mic-live-tag');
+                    if (micTag) {
+                        micTag.style.display = 'inline-flex';
+                        micTag.innerHTML = isVideoCall ? '<span>📹</span> HD Video & Mic Active' : '<span>🎙️</span> Real Voice Mic Live (WebRTC)';
+                        micTag.style.background = 'rgba(0, 230, 118, 0.15)';
+                        micTag.style.borderColor = 'rgba(0, 230, 118, 0.3)';
+                        micTag.style.color = '#00E676';
+                    }
+                } else {
+                    console.warn("navigator.mediaDevices not available on this origin");
+                }
             } catch (err) {
-                console.warn("Microphone access denied or not available, fallback to signaling simulation:", err);
+                console.warn("Media devices access error:", err);
             }
 
             peerConnection = new RTCPeerConnection(rtcConfig);
@@ -1156,16 +1330,43 @@
             }
 
             peerConnection.ontrack = (event) => {
-                console.log("🔊 Remote audio stream received via WebRTC!");
+                console.log("🔊 Remote track received via WebRTC!", event.track ? event.track.kind : "stream", event);
+                
+                const vidPlayer = document.getElementById('remote-video-player');
+                const overlay = document.getElementById('video-connecting-overlay');
                 const audioPlayer = document.getElementById('remote-audio-player');
-                if (audioPlayer && event.streams[0]) {
-                    audioPlayer.srcObject = event.streams[0];
-                    audioPlayer.play().catch(e => console.warn("Audio autoplay:", e));
+
+                if (event.track && event.track.kind === 'video') {
+                    if (overlay) overlay.style.display = 'none';
+                    if (vidPlayer) {
+                        const vidStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+                        vidPlayer.srcObject = vidStream;
+                        vidPlayer.play().catch(e => console.warn("Video autoplay:", e));
+                    }
+                } else if (event.track && event.track.kind === 'audio') {
+                    if (audioPlayer) {
+                        const audioStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+                        audioPlayer.srcObject = audioStream;
+                        audioPlayer.play().catch(e => console.warn("Audio autoplay:", e));
+                    }
+                } else if (event.streams && event.streams[0]) {
+                    const st = event.streams[0];
+                    if (st.getVideoTracks().length > 0) {
+                        if (overlay) overlay.style.display = 'none';
+                        if (vidPlayer) {
+                            vidPlayer.srcObject = st;
+                            vidPlayer.play().catch(e => console.warn("Video autoplay:", e));
+                        }
+                    }
+                    if (st.getAudioTracks().length > 0 && audioPlayer) {
+                        audioPlayer.srcObject = st;
+                        audioPlayer.play().catch(e => console.warn("Audio autoplay:", e));
+                    }
                 }
             };
 
             peerConnection.onicecandidate = (event) => {
-                if (event.candidate && currentCall) {
+                if (event.candidate && currentCall && ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "WEBRTC_ICE_CANDIDATE",
                         call_id: currentCall.callId,
@@ -1174,46 +1375,107 @@
                 }
             };
 
+            peerConnection.onconnectionstatechange = () => {
+                console.log("WebRTC Connection State:", peerConnection.connectionState);
+                const statusEl = document.getElementById('call-modal-status');
+                if (statusEl) {
+                    if (peerConnection.connectionState === 'connected') {
+                        const typeLabel = (currentCall && currentCall.callType === 'video') ? "HD Video Call Connected" : "Encrypted Voice Connected";
+                        statusEl.innerHTML = `🟢 <span style="color:#00E676;font-weight:800;">${typeLabel} (P2P Stream)</span>`;
+                    } else if (peerConnection.connectionState === 'connecting') {
+                        statusEl.innerHTML = '🟡 <span>Connecting WebRTC Stream...</span>';
+                    } else if (peerConnection.connectionState === 'failed') {
+                        statusEl.innerHTML = '🔴 <span>WebRTC Reconnecting...</span>';
+                    }
+                }
+            };
+
             if (isCaller) {
-                const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
-                await peerConnection.setLocalDescription(offer);
-                ws.send(JSON.stringify({
-                    type: "WEBRTC_OFFER",
-                    call_id: currentCall.callId,
-                    payload: offer
-                }));
+                try {
+                    const offer = await peerConnection.createOffer({
+                        offerToReceiveAudio: true,
+                        offerToReceiveVideo: isVideoCall
+                    });
+                    await peerConnection.setLocalDescription(offer);
+                    if (ws && ws.readyState === WebSocket.OPEN && currentCall) {
+                        ws.send(JSON.stringify({
+                            type: "WEBRTC_OFFER",
+                            call_id: currentCall.callId,
+                            payload: offer
+                        }));
+                    }
+                } catch(e) {
+                    console.error("Error creating WebRTC offer:", e);
+                }
             }
+
+            isSettingUpWebRTC = false;
         }
 
         async function handleRemoteOffer(msg) {
             const offerData = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-            if (!peerConnection) await setupWebRTCPeerConnection(false);
+            if (!peerConnection) {
+                await setupWebRTCPeerConnection(false);
+            }
 
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offerData));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offerData));
+                await processQueuedCandidates();
 
-            ws.send(JSON.stringify({
-                type: "WEBRTC_ANSWER",
-                call_id: currentCall.callId,
-                payload: answer
-            }));
+                const isVideoCall = currentCall && currentCall.callType === 'video';
+                const answer = await peerConnection.createAnswer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: isVideoCall
+                });
+                await peerConnection.setLocalDescription(answer);
+
+                if (ws && ws.readyState === WebSocket.OPEN && currentCall) {
+                    ws.send(JSON.stringify({
+                        type: "WEBRTC_ANSWER",
+                        call_id: currentCall.callId,
+                        payload: answer
+                    }));
+                }
+            } catch (e) {
+                console.error("Error handling remote offer:", e);
+            }
         }
 
         async function handleRemoteAnswer(msg) {
             const answerData = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
             if (peerConnection) {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answerData));
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answerData));
+                    await processQueuedCandidates();
+                } catch(e) {
+                    console.error("Error handling remote answer:", e);
+                }
             }
         }
 
         async function handleRemoteIceCandidate(msg) {
             const candidateData = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-            if (peerConnection && candidateData) {
+            if (!candidateData) return;
+            const candidate = new RTCIceCandidate(candidateData);
+            if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
                 try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
+                    await peerConnection.addIceCandidate(candidate);
                 } catch (e) {
                     console.warn("Error adding ICE candidate:", e);
+                }
+            } else {
+                iceCandidatesQueue.push(candidate);
+            }
+        }
+
+        async function processQueuedCandidates() {
+            if (!peerConnection) return;
+            while (iceCandidatesQueue.length > 0) {
+                const cand = iceCandidatesQueue.shift();
+                try {
+                    await peerConnection.addIceCandidate(cand);
+                } catch(e) {
+                    console.warn("Error adding queued candidate:", e);
                 }
             }
         }
@@ -1248,11 +1510,36 @@
                 if (icon) icon.innerText = '🎙️';
                 if (label) label.innerText = 'Mute';
                 if (micTag) {
-                    micTag.innerHTML = '<span>🎙️</span> Real Voice Mic Live (WebRTC)';
+                    micTag.innerHTML = (currentCall && currentCall.callType === 'video') ? '<span>📹</span> HD Video & Mic Active' : '<span>🎙️</span> Real Voice Mic Live (WebRTC)';
                     micTag.style.background = 'rgba(0, 230, 118, 0.15)';
                     micTag.style.borderColor = 'rgba(0, 230, 118, 0.3)';
                     micTag.style.color = 'var(--accent-green)';
                 }
+            }
+        }
+
+        function toggleCamera() {
+            if (!localMediaStream) return;
+            const videoTracks = localMediaStream.getVideoTracks();
+            if (videoTracks.length === 0) return;
+
+            isVideoOff = !isVideoOff;
+            videoTracks.forEach(t => {
+                t.enabled = !isVideoOff;
+            });
+
+            const btn = document.getElementById('btn-toggle-cam');
+            const icon = document.getElementById('cam-icon');
+            const label = document.getElementById('cam-label');
+
+            if (isVideoOff) {
+                if (btn) btn.classList.add('is-off');
+                if (icon) icon.innerText = '📷✕';
+                if (label) label.innerText = 'Cam Off';
+            } else {
+                if (btn) btn.classList.remove('is-off');
+                if (icon) icon.innerText = '📹';
+                if (label) label.innerText = 'Cam';
             }
         }
 
@@ -1266,12 +1553,30 @@
                 localMediaStream = null;
             }
             isMuted = false;
-            const btn = document.getElementById('btn-toggle-mute');
-            if (btn) {
-                btn.classList.remove('is-muted');
+            isVideoOff = false;
+
+            const localVid = document.getElementById('local-video-player');
+            if (localVid) localVid.srcObject = null;
+            const remoteVid = document.getElementById('remote-video-player');
+            if (remoteVid) remoteVid.srcObject = null;
+            const overlay = document.getElementById('video-connecting-overlay');
+            if (overlay) overlay.style.display = 'flex';
+
+            const btnMute = document.getElementById('btn-toggle-mute');
+            if (btnMute) {
+                btnMute.classList.remove('is-muted');
                 document.getElementById('mute-icon').innerText = '🎙️';
                 document.getElementById('mute-label').innerText = 'Mute';
             }
+
+            const btnCam = document.getElementById('btn-toggle-cam');
+            if (btnCam) {
+                btnCam.classList.remove('is-off');
+                btnCam.style.display = 'none';
+                document.getElementById('cam-icon').innerText = '📹';
+                document.getElementById('cam-label').innerText = 'Cam';
+            }
+
             const micTag = document.getElementById('mic-live-tag');
             if (micTag) {
                 micTag.style.display = 'none';
@@ -1452,8 +1757,11 @@
                         </div>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-call" onclick="initiateCall('${m.id}', '${m.name.replace(/'/g, "\\'")}', '${m.avatar_url}', ${m.voice_rate_per_min})">
-                            📞 1-on-1
+                        <button class="btn-call" onclick="initiateCall('${m.id}', '${m.name.replace(/'/g, "\\'")}', '${m.avatar_url}', ${m.voice_rate_per_min}, 'voice')">
+                            📞 Voice
+                        </button>
+                        <button class="btn-video" onclick="initiateCall('${m.id}', '${m.name.replace(/'/g, "\\'")}', '${m.avatar_url}', ${m.voice_rate_per_min}, 'video')">
+                            📹 Video
                         </button>
                         <button class="btn-chat" onclick="openChat('${m.id}', '${m.name.replace(/'/g, "\\'")}')">
                             💬 Chat
@@ -1661,30 +1969,46 @@
             if (node) node.remove();
         }
 
-        function initiateCall(receiverId, name, avatar, rate) {
-            currentCall = { receiverId, name, rate };
+        function initiateCall(receiverId, name, avatar, rate, callType = 'voice') {
+            currentCall = { receiverId, name, rate, callType };
+            const isVideo = callType === 'video';
+
+            document.getElementById('call-video-box').style.display = isVideo ? 'flex' : 'none';
+            document.getElementById('call-voice-box').style.display = isVideo ? 'none' : 'block';
+            document.getElementById('btn-toggle-cam').style.display = isVideo ? 'inline-flex' : 'none';
+
             document.getElementById('call-modal-avatar').src = avatar;
             document.getElementById('call-modal-name').innerText = name;
-            document.getElementById('call-modal-status').innerText = "Ringing...";
+            document.getElementById('call-modal-status').innerText = isVideo ? "Ringing 📹 HD Video Call..." : "Ringing 📞 Voice Call...";
             document.getElementById('group-participants-container').style.display = 'none';
             document.getElementById('call-ticker-box').style.display = 'none';
             document.getElementById('incoming-controls').style.display = 'none';
             document.getElementById('active-controls').style.display = 'flex';
             document.getElementById('call-modal').style.display = 'flex';
 
+            const audioPlayer = document.getElementById('remote-audio-player');
+            if (audioPlayer) audioPlayer.play().catch(() => {});
+
             ws.send(JSON.stringify({
                 type: "CALL_REQUEST",
-                receiver_id: receiverId
+                receiver_id: receiverId,
+                call_type: callType
             }));
         }
 
         function showIncomingCall(msg) {
             const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-            currentCall = { callId: msg.call_id, callerId: msg.caller_id, rate: msg.rate_per_min };
+            const callType = msg.call_type || (payload && payload.call_type) || "voice";
+            currentCall = { callId: msg.call_id, callerId: msg.caller_id, rate: msg.rate_per_min, callType: callType };
+
+            const isVideo = callType === 'video';
+            document.getElementById('call-video-box').style.display = isVideo ? 'flex' : 'none';
+            document.getElementById('call-voice-box').style.display = isVideo ? 'none' : 'block';
+            document.getElementById('btn-toggle-cam').style.display = isVideo ? 'inline-flex' : 'none';
 
             document.getElementById('call-modal-avatar').src = payload.caller_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400';
             document.getElementById('call-modal-name').innerText = payload.caller_name || 'Incoming Caller';
-            document.getElementById('call-modal-status').innerText = `Incoming Voice Call (₹${msg.rate_per_min}/min)`;
+            document.getElementById('call-modal-status').innerText = isVideo ? `Incoming 📹 HD Video Call (₹${msg.rate_per_min}/min)` : `Incoming 📞 Voice Call (₹${msg.rate_per_min}/min)`;
             document.getElementById('group-participants-container').style.display = 'none';
             document.getElementById('call-ticker-box').style.display = 'none';
             document.getElementById('incoming-controls').style.display = 'flex';
@@ -1697,12 +2021,15 @@
             document.getElementById('incoming-controls').style.display = 'none';
             document.getElementById('active-controls').style.display = 'flex';
 
+            const audioPlayer = document.getElementById('remote-audio-player');
+            if (audioPlayer) audioPlayer.play().catch(() => {});
+
             ws.send(JSON.stringify({
                 type: "CALL_ACCEPT",
                 call_id: currentCall.callId
             }));
 
-            // Launch WebRTC Audio for Receiver
+            // Launch WebRTC Audio & Video for Receiver
             await setupWebRTCPeerConnection(false);
         }
 
@@ -1731,29 +2058,88 @@
             endCallUI();
         }
 
+        // ==========================================
+        // High-Performance Local Timer & 30s Server Calibration
+        // ==========================================
+        let localCallInterval = null;
+        let localDurationSec = 0;
+        let currentRatePerMin = 10;
+        let remainingSecEstimate = 300;
+
+        function startLocalCallTimer(ratePerMin) {
+            stopLocalCallTimer();
+            localDurationSec = 0;
+            currentRatePerMin = ratePerMin || (currentCall ? currentCall.rate : 10);
+            remainingSecEstimate = 300;
+
+            localCallInterval = setInterval(() => {
+                localDurationSec++;
+                const mins = Math.floor(localDurationSec / 60);
+                const secs = localDurationSec % 60;
+                document.getElementById('call-timer-text').innerText = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                document.getElementById('ticker-duration').innerText = `${localDurationSec}s`;
+
+                const ratePerSec = currentRatePerMin / 60.0;
+                const costSoFar = localDurationSec * ratePerSec;
+                document.getElementById('ticker-cost').innerText = `₹${costSoFar.toFixed(2)}`;
+
+                if (remainingSecEstimate > 0) {
+                    remainingSecEstimate--;
+                    document.getElementById('ticker-remaining').innerText = `${remainingSecEstimate}s remaining`;
+                    if (remainingSecEstimate <= 30) {
+                        document.getElementById('warning-pill').style.display = 'block';
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopLocalCallTimer() {
+            if (localCallInterval) {
+                clearInterval(localCallInterval);
+                localCallInterval = null;
+            }
+        }
+
         async function startActiveCallUI(msg) {
-            if (currentCall) currentCall.callId = msg.call_id;
-            document.getElementById('call-modal-status').innerText = "Encrypted Audio Connected (DTLS-SRTP)";
+            if (currentCall) {
+                currentCall.callId = msg.call_id;
+                if (msg.call_type) currentCall.callType = msg.call_type;
+                if (msg.rate_per_min) currentCall.rate = msg.rate_per_min;
+            }
+            const isVideo = currentCall && currentCall.callType === 'video';
+
+            document.getElementById('call-video-box').style.display = isVideo ? 'flex' : 'none';
+            document.getElementById('call-voice-box').style.display = isVideo ? 'none' : 'block';
+            document.getElementById('btn-toggle-cam').style.display = isVideo ? 'inline-flex' : 'none';
+
+            document.getElementById('call-modal-status').innerText = isVideo ? "Live HD Video Call Connected" : "Live 1-on-1 Voice Call";
             document.getElementById('call-ticker-box').style.display = 'block';
             document.getElementById('ticker-rate').innerText = `₹${msg.rate_per_min}/min`;
             document.getElementById('warning-pill').style.display = 'none';
 
-            // If caller, establish WebRTC offer to start voice streaming
+            // Start local browser timer (Zero server CPU/network overhead!)
+            startLocalCallTimer(msg.rate_per_min);
+
+            // If caller, establish WebRTC offer to start media streaming
             if (currentCall && currentCall.receiverId) {
                 await setupWebRTCPeerConnection(true);
             }
         }
 
         function updateCallTick(msg) {
-            const mins = Math.floor(msg.duration_sec / 60);
-            const secs = msg.duration_sec % 60;
-            document.getElementById('call-timer-text').innerText = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+            // Re-calibrate local counter with precise 30-second server sync
+            localDurationSec = msg.duration_sec;
+            remainingSecEstimate = msg.remaining_sec;
             document.getElementById('ticker-duration').innerText = `${msg.duration_sec}s`;
             document.getElementById('ticker-cost').innerText = `₹${msg.cost.toFixed(2)}`;
             document.getElementById('ticker-remaining').innerText = `${msg.remaining_sec}s remaining`;
+            if (msg.remaining_sec <= 30) {
+                document.getElementById('warning-pill').style.display = 'block';
+            }
         }
 
         function endCallUI() {
+            stopLocalCallTimer();
             closeWebRTC();
             document.getElementById('call-modal').style.display = 'none';
             document.getElementById('group-participants-container').style.display = 'none';

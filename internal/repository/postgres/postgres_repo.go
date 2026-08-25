@@ -435,7 +435,7 @@ func (r *userRepo) GetByToken(token string) (*domain.User, error) {
 func (r *userRepo) GetByID(id string) (*domain.User, error) {
 	var user domain.User
 	err := r.db.QueryRow(`
-		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_min, is_online, is_busy, active_token, created_at
+		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at
 		FROM users WHERE id = $1
 	`, id).Scan(
 		&user.ID, &user.Phone, &user.Name, &user.Role, &user.AvatarURL, &user.Bio,

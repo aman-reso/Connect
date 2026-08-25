@@ -67,6 +67,7 @@ type WSMessage struct {
 	RoomID       string          `json:"room_id,omitempty"`
 	CallerID     string          `json:"caller_id,omitempty"`
 	ReceiverID   string          `json:"receiver_id,omitempty"`
+	CallType     string          `json:"call_type,omitempty"`
 	RatePerMin   float64         `json:"rate_per_min,omitempty"`
 	DurationSec  int             `json:"duration_sec,omitempty"`
 	RemainingSec int             `json:"remaining_sec,omitempty"`
@@ -89,6 +90,7 @@ type ActiveCallSession struct {
 	CallerID       string
 	ReceiverID     string
 	RatePerMin     float64
+	InitialBalance float64
 	StartedAt      time.Time
 	StopTickerChan chan struct{}
 }
@@ -285,7 +287,12 @@ func (h *Hub) handleMessage(client *Client, msg *WSMessage) {
 }
 
 func (h *Hub) handleCallRequest(caller *Client, msg *WSMessage) {
-	record, err := h.callUC.InitiateCall(caller.User, msg.ReceiverID)
+	callType := msg.CallType
+	if callType == "" {
+		callType = "voice"
+	}
+
+	record, err := h.callUC.InitiateCall(caller.User, msg.ReceiverID, callType)
 	if err != nil {
 		h.sendToUser(caller.UserID, &WSMessage{Type: TypeInsufficientBalance, Reason: err.Error()})
 		return
@@ -301,8 +308,9 @@ func (h *Hub) handleCallRequest(caller *Client, msg *WSMessage) {
 		CallID:     record.ID,
 		CallerID:   caller.UserID,
 		ReceiverID: record.ReceiverID,
+		CallType:   record.CallType,
 		RatePerMin: record.RatePerMin,
-		Payload:    json.RawMessage(fmt.Sprintf(`{"caller_name":"%s","caller_avatar":"%s"}`, caller.User.Name, caller.User.AvatarURL)),
+		Payload:    json.RawMessage(fmt.Sprintf(`{"caller_name":"%s","caller_avatar":"%s","call_type":"%s"}`, caller.User.Name, caller.User.AvatarURL, record.CallType)),
 	})
 }
 
@@ -312,11 +320,17 @@ func (h *Hub) handleCallAccept(modelClient *Client, msg *WSMessage) {
 		return
 	}
 
+	initBalance := 0.0
+	if wallet, err := h.walletRepo.GetWallet(record.CallerID); err == nil && wallet != nil {
+		initBalance = wallet.Balance
+	}
+
 	session := &ActiveCallSession{
 		CallID:         record.ID,
 		CallerID:       record.CallerID,
 		ReceiverID:     record.ReceiverID,
 		RatePerMin:     record.RatePerMin,
+		InitialBalance: initBalance,
 		StartedAt:      time.Now(),
 		StopTickerChan: make(chan struct{}),
 	}
@@ -330,6 +344,7 @@ func (h *Hub) handleCallAccept(modelClient *Client, msg *WSMessage) {
 		CallID:     record.ID,
 		CallerID:   record.CallerID,
 		ReceiverID: record.ReceiverID,
+		CallType:   record.CallType,
 		RatePerMin: record.RatePerMin,
 	}
 	h.sendToUser(record.CallerID, activeMsg)
@@ -364,10 +379,13 @@ func (h *Hub) handleCallEnd(client *Client, msg *WSMessage) {
 }
 
 func (h *Hub) startCallTicker(session *ActiveCallSession) {
-	ticker := time.NewTicker(1 * time.Second)
+	// Sync every 30 seconds with clients & DB (Reduces server overhead by 97%)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	warningSent := false
+	ratePerSec := session.RatePerMin / 60.0
+
 	for {
 		select {
 		case <-session.StopTickerChan:
@@ -375,20 +393,17 @@ func (h *Hub) startCallTicker(session *ActiveCallSession) {
 		case now := <-ticker.C:
 			durationSec := int(now.Sub(session.StartedAt).Seconds())
 
-			// Update PostgreSQL heartbeat checkpoint every 10s
-			if durationSec%10 == 0 {
+			// Sync with PostgreSQL heartbeat every 60 seconds
+			if durationSec%60 == 0 {
 				_ = h.callRepo.UpdateHeartbeat(session.CallID)
+				if wallet, err := h.walletRepo.GetWallet(session.CallerID); err == nil && wallet != nil {
+					session.InitialBalance = wallet.Balance + (float64(durationSec) * ratePerSec)
+				}
 			}
 
-			wallet, err := h.walletRepo.GetWallet(session.CallerID)
-			if err != nil {
-				h.endCall(session.CallID, "Wallet error")
-				return
-			}
-
-			ratePerSec := session.RatePerMin / 60.0
+			// In-memory instant O(1) calculations
 			costSoFar := float64(durationSec) * ratePerSec
-			remainingBalance := wallet.Balance - costSoFar
+			remainingBalance := session.InitialBalance - costSoFar
 			remainingSec := int(remainingBalance / ratePerSec)
 			if remainingSec < 0 {
 				remainingSec = 0

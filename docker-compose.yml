@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: connect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: connect_user
+      POSTGRES_PASSWORD: connect_secure_password_2026
+      POSTGRES_DB: connect_db
+    volumes:
+      - connect_pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connect_user -d connect_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - connect-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: connect-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://connect_user:connect_secure_password_2026@postgres:5432/connect_db?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - connect-net
+
+volumes:
+  connect_pgdata:
+
+networks:
+  connect-net:
+    driver: bridge
