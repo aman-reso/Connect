@@ -1,0 +1,19 @@
+# Binaries
+Connect
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# IDE / Editor
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Environment & Logs
+*.log
+.env

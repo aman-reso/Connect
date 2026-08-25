@@ -1,0 +1,1233 @@
+package postgres
+
+import (
+	"database/sql"
+	"fmt"
+	"log"
+	"time"
+
+	"Connect/internal/domain"
+	"Connect/internal/repository"
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
+)
+
+type PostgresStore struct {
+	db         *sql.DB
+	Users      repository.UserRepository
+	Wallets    repository.WalletRepository
+	Calls      repository.CallRepository
+	Rooms      repository.RoomRepository
+	Messages   repository.MessageRepository
+	Payments   repository.PaymentRepository
+	Onboarding repository.ModelOnboardingRepository
+	Reports    repository.ReportRepository
+	Favorites  repository.FavoriteRepository
+}
+
+func NewPostgresStore(connStr string) (*PostgresStore, error) {
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("postgres open error: %w", err)
+	}
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("postgres ping error: %w", err)
+	}
+
+	store := &PostgresStore{
+		db:         db,
+		Users:      &userRepo{db: db},
+		Wallets:    &walletRepo{db: db},
+		Calls:      &callRepo{db: db, wallets: &walletRepo{db: db}},
+		Rooms:      &roomRepo{db: db, wallets: &walletRepo{db: db}},
+		Messages:   &messageRepo{db: db},
+		Payments:   &paymentRepo{db: db},
+		Onboarding: &modelOnboardingRepo{db: db},
+		Reports:    &reportRepo{db: db},
+		Favorites:  &favoriteRepo{db: db},
+	}
+
+	if err := store.initSchema(); err != nil {
+		return nil, fmt.Errorf("postgres schema error: %w", err)
+	}
+
+	store.seedDefaultModels()
+	_ = store.Calls.RecoverInterruptedCalls()
+	go store.startEphemeralCleaner()
+
+	log.Println("🐘 PostgreSQL Clean Architecture Repository connected!")
+	return store, nil
+}
+
+func (s *PostgresStore) initSchema() error {
+	schema := `
+	CREATE TABLE IF NOT EXISTS users (
+		id VARCHAR(64) PRIMARY KEY,
+		phone VARCHAR(20) UNIQUE NOT NULL,
+		name VARCHAR(100) NOT NULL,
+		role VARCHAR(20) NOT NULL DEFAULT 'user',
+		avatar_url TEXT,
+		bio TEXT,
+		voice_rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 10.00,
+		group_rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 5.00,
+		chat_rate_per_msg NUMERIC(10, 2) NOT NULL DEFAULT 1.00,
+		is_online BOOLEAN NOT NULL DEFAULT FALSE,
+		is_busy BOOLEAN NOT NULL DEFAULT FALSE,
+		active_token TEXT,
+		device_id VARCHAR(100),
+		active_room_id VARCHAR(64),
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+	CREATE INDEX IF NOT EXISTS idx_users_active_token ON users(active_token);
+
+	CREATE TABLE IF NOT EXISTS wallets (
+		user_id VARCHAR(64) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+		balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (balance >= 0),
+		bonus_given NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+		total_spent NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+		total_earned NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE TABLE IF NOT EXISTS transactions (
+		id VARCHAR(64) PRIMARY KEY,
+		user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		amount NUMERIC(12, 2) NOT NULL,
+		type VARCHAR(50) NOT NULL,
+		description TEXT,
+		call_id VARCHAR(64),
+		room_id VARCHAR(64),
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+
+	CREATE TABLE IF NOT EXISTS call_records (
+		id VARCHAR(64) PRIMARY KEY,
+		caller_id VARCHAR(64) NOT NULL REFERENCES users(id),
+		caller_name VARCHAR(100) NOT NULL,
+		receiver_id VARCHAR(64) NOT NULL REFERENCES users(id),
+		receiver_name VARCHAR(100) NOT NULL,
+		call_type VARCHAR(20) NOT NULL DEFAULT 'voice',
+		status VARCHAR(30) NOT NULL,
+		rate_per_min NUMERIC(10, 2) NOT NULL,
+		started_at TIMESTAMP WITH TIME ZONE,
+		ended_at TIMESTAMP WITH TIME ZONE,
+		last_heartbeat TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		duration_seconds INT NOT NULL DEFAULT 0,
+		total_cost NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+		end_reason TEXT,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE TABLE IF NOT EXISTS group_rooms (
+		id VARCHAR(64) PRIMARY KEY,
+		host_id VARCHAR(64) NOT NULL REFERENCES users(id),
+		host_name VARCHAR(100) NOT NULL,
+		host_avatar TEXT,
+		title VARCHAR(200) NOT NULL,
+		rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 5.00,
+		max_participants INT NOT NULL DEFAULT 10,
+		is_active BOOLEAN NOT NULL DEFAULT TRUE,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE TABLE IF NOT EXISTS ephemeral_messages (
+		id VARCHAR(64) PRIMARY KEY,
+		sender_id VARCHAR(64) NOT NULL REFERENCES users(id),
+		receiver_id VARCHAR(64),
+		room_id VARCHAR(64),
+		content TEXT NOT NULL,
+		cost NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+		expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+		is_read BOOLEAN NOT NULL DEFAULT FALSE,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE TABLE IF NOT EXISTS payment_orders (
+		id VARCHAR(64) PRIMARY KEY,
+		original_payment_id VARCHAR(64),
+		user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		amount NUMERIC(12, 2) NOT NULL,
+		currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+		status VARCHAR(30) NOT NULL,
+		gateway_name VARCHAR(50) NOT NULL DEFAULT 'razorpay',
+		gateway_order_id VARCHAR(100),
+		gateway_payment_id VARCHAR(100),
+		gateway_signature TEXT,
+		failure_reason TEXT,
+		refund_reason TEXT,
+		refund_id VARCHAR(100),
+		retry_count INT NOT NULL DEFAULT 0,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		completed_at TIMESTAMP WITH TIME ZONE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_payment_orders_user ON payment_orders(user_id);
+	CREATE INDEX IF NOT EXISTS idx_payment_orders_status ON payment_orders(status);
+	CREATE INDEX IF NOT EXISTS idx_payment_orders_original ON payment_orders(original_payment_id);
+
+	CREATE TABLE IF NOT EXISTS payment_audit_logs (
+		id VARCHAR(64) PRIMARY KEY,
+		payment_id VARCHAR(64) NOT NULL REFERENCES payment_orders(id) ON DELETE CASCADE,
+		from_status VARCHAR(30) NOT NULL,
+		to_status VARCHAR(30) NOT NULL,
+		event_name VARCHAR(100) NOT NULL,
+		gateway_ref_id VARCHAR(100),
+		gateway_code VARCHAR(50),
+		message TEXT NOT NULL,
+		metadata_json TEXT,
+		duration_ms BIGINT NOT NULL DEFAULT 0,
+		started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+		ended_at TIMESTAMP WITH TIME ZONE NOT NULL,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_payment_audit_payment ON payment_audit_logs(payment_id);
+	CREATE INDEX IF NOT EXISTS idx_payment_audit_created ON payment_audit_logs(created_at ASC);
+
+	CREATE TABLE IF NOT EXISTS model_profiles (
+		id VARCHAR(64) PRIMARY KEY,
+		user_id VARCHAR(64) UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		display_name VARCHAR(100) NOT NULL,
+		bio TEXT NOT NULL,
+		avatar_url TEXT NOT NULL,
+		age INT NOT NULL CHECK (age >= 18),
+		gender VARCHAR(20) NOT NULL,
+		languages VARCHAR(200) NOT NULL,
+		interests VARCHAR(200) NOT NULL,
+		voice_rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 15.00,
+		group_rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 7.00,
+		chat_rate_per_msg NUMERIC(10, 2) NOT NULL DEFAULT 2.00,
+		payout_upi VARCHAR(100),
+		payout_bank_acc VARCHAR(50),
+		payout_ifsc VARCHAR(20),
+		audio_intro_url TEXT,
+		status VARCHAR(30) NOT NULL DEFAULT 'pending_review',
+		rejection_reason TEXT,
+		report_count INT NOT NULL DEFAULT 0,
+		is_suspended BOOLEAN NOT NULL DEFAULT FALSE,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_model_profiles_user ON model_profiles(user_id);
+	CREATE INDEX IF NOT EXISTS idx_model_profiles_status ON model_profiles(status);
+
+	CREATE TABLE IF NOT EXISTS model_reports (
+		id VARCHAR(64) PRIMARY KEY,
+		reporter_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		reporter_name VARCHAR(100) NOT NULL,
+		model_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		model_name VARCHAR(100) NOT NULL,
+		call_id VARCHAR(64),
+		room_id VARCHAR(64),
+		category VARCHAR(50) NOT NULL,
+		description TEXT NOT NULL,
+		status VARCHAR(30) NOT NULL DEFAULT 'submitted',
+		admin_action VARCHAR(50) DEFAULT 'none',
+		admin_note TEXT,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		resolved_at TIMESTAMP WITH TIME ZONE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_model_reports_model ON model_reports(model_id);
+	CREATE INDEX IF NOT EXISTS idx_model_reports_reporter ON model_reports(reporter_id);
+	CREATE INDEX IF NOT EXISTS idx_model_reports_status ON model_reports(status);
+
+	CREATE TABLE IF NOT EXISTS user_favorites (
+		user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		model_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		PRIMARY KEY (user_id, model_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id);
+	CREATE INDEX IF NOT EXISTS idx_user_favorites_model ON user_favorites(model_id);
+	`
+	_, err := s.db.Exec(schema)
+	return err
+}
+
+func (s *PostgresStore) seedDefaultModels() {
+	seedModels := []*domain.User{
+		{
+			ID:              "model-1",
+			Phone:           "9876543210",
+			Name:            "Aanya Sharma",
+			Role:            domain.RoleModel,
+			AvatarURL:       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+			Bio:             "Love deep late-night conversations, music & psychology 🌙",
+			VoiceRatePerMin: 10.0,
+			GroupRatePerMin: 5.0,
+			ChatRatePerMsg:  1.0,
+			IsOnline:        true,
+			IsBusy:          false,
+			CreatedAt:       time.Now(),
+		},
+		{
+			ID:              "model-2",
+			Phone:           "9876543211",
+			Name:            "Riya Sen",
+			Role:            domain.RoleModel,
+			AvatarURL:       "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
+			Bio:             "Artist & traveler. Let's talk about dreams & coffee ☕✨",
+			VoiceRatePerMin: 15.0,
+			GroupRatePerMin: 7.0,
+			ChatRatePerMsg:  2.0,
+			IsOnline:        true,
+			IsBusy:          false,
+			CreatedAt:       time.Now(),
+		},
+		{
+			ID:              "model-3",
+			Phone:           "9876543212",
+			Name:            "Pooja Verma",
+			Role:            domain.RoleModel,
+			AvatarURL:       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
+			Bio:             "Friendly listener & anime enthusiast. Always here to cheer you up!",
+			VoiceRatePerMin: 20.0,
+			GroupRatePerMin: 8.0,
+			ChatRatePerMsg:  2.5,
+			IsOnline:        true,
+			IsBusy:          false,
+			CreatedAt:       time.Now(),
+		},
+	}
+
+	for _, m := range seedModels {
+		token := fmt.Sprintf("token_%s_seed", m.ID)
+		_, _ = s.db.Exec(`
+			INSERT INTO users (id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT (phone) DO UPDATE SET active_token = EXCLUDED.active_token
+		`, m.ID, m.Phone, m.Name, m.Role, m.AvatarURL, m.Bio, m.VoiceRatePerMin, m.GroupRatePerMin, m.ChatRatePerMsg, true, false, token)
+
+		_, _ = s.db.Exec(`
+			INSERT INTO wallets (user_id, balance, bonus_given, total_spent, total_earned)
+			VALUES ($1, 0, 0, 0, 0)
+			ON CONFLICT (user_id) DO NOTHING
+		`, m.ID)
+	}
+}
+
+func (s *PostgresStore) startEphemeralCleaner() {
+	ticker := time.NewTicker(20 * time.Second)
+	for range ticker.C {
+		_ = s.Messages.PurgeExpired()
+	}
+}
+
+// ----------------- USER REPO -----------------
+type userRepo struct{ db *sql.DB }
+
+func (r *userRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*domain.User, string, bool, error) {
+	var user domain.User
+	err := r.db.QueryRow(`
+		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, created_at
+		FROM users WHERE phone = $1
+	`, phone).Scan(
+		&user.ID, &user.Phone, &user.Name, &user.Role, &user.AvatarURL, &user.Bio,
+		&user.VoiceRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.CreatedAt,
+	)
+
+	if err == nil {
+		newToken := fmt.Sprintf("token_%s_%s", user.ID, uuid.New().String()[:8])
+		_, err = r.db.Exec(`UPDATE users SET active_token = $1, is_online = TRUE WHERE id = $2`, newToken, user.ID)
+		if err != nil {
+			return nil, "", false, err
+		}
+		user.ActiveToken = newToken
+		return &user, newToken, false, nil
+	}
+
+	id := "user-" + uuid.New().String()[:8]
+	if role == domain.RoleModel {
+		id = "model-" + uuid.New().String()[:8]
+	}
+
+	avatar := "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400"
+	if role == domain.RoleModel {
+		avatar = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400"
+	}
+
+	token := fmt.Sprintf("token_%s_%s", id, uuid.New().String()[:8])
+	newUser := &domain.User{
+		ID:              id,
+		Phone:           phone,
+		Name:            name,
+		Role:            role,
+		AvatarURL:       avatar,
+		Bio:             "Hey there! Connecting on Connect.",
+		VoiceRatePerMin: 12.0,
+		GroupRatePerMin: 6.0,
+		ChatRatePerMsg:  1.5,
+		IsOnline:        true,
+		IsBusy:          false,
+		ActiveToken:     token,
+		CreatedAt:       time.Now(),
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		INSERT INTO users (id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`, newUser.ID, newUser.Phone, newUser.Name, newUser.Role, newUser.AvatarURL, newUser.Bio,
+		newUser.VoiceRatePerMin, newUser.GroupRatePerMin, newUser.ChatRatePerMsg, true, false, token, newUser.CreatedAt)
+	if err != nil {
+		return nil, "", false, err
+	}
+
+	bonus := 0.0
+	if role == domain.RoleUser {
+		bonus = 50.0
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO wallets (user_id, balance, bonus_given, total_spent, total_earned, updated_at)
+		VALUES ($1, $2, $3, 0, 0, NOW())
+	`, newUser.ID, bonus, bonus)
+	if err != nil {
+		return nil, "", false, err
+	}
+
+	if bonus > 0 {
+		_, err = tx.Exec(`
+			INSERT INTO transactions (id, user_id, amount, type, description, created_at)
+			VALUES ($1, $2, $3, $4, $5, NOW())
+		`, uuid.New().String(), newUser.ID, bonus, domain.TxTypeWelcomeBonus, "Welcome Bonus Incentive credited: ₹50.00")
+		if err != nil {
+			return nil, "", false, err
+		}
+	}
+
+	return newUser, token, true, tx.Commit()
+}
+
+func (r *userRepo) GetByToken(token string) (*domain.User, error) {
+	var user domain.User
+	err := r.db.QueryRow(`
+		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at
+		FROM users WHERE active_token = $1
+	`, token).Scan(
+		&user.ID, &user.Phone, &user.Name, &user.Role, &user.AvatarURL, &user.Bio,
+		&user.VoiceRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.ActiveToken, &user.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token or session logged in on another device")
+	}
+	return &user, nil
+}
+
+func (r *userRepo) GetByID(id string) (*domain.User, error) {
+	var user domain.User
+	err := r.db.QueryRow(`
+		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_min, is_online, is_busy, active_token, created_at
+		FROM users WHERE id = $1
+	`, id).Scan(
+		&user.ID, &user.Phone, &user.Name, &user.Role, &user.AvatarURL, &user.Bio,
+		&user.VoiceRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.ActiveToken, &user.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return &user, nil
+}
+
+func (r *userRepo) ListModels() ([]*domain.User, error) {
+	rows, err := r.db.Query(`
+		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, created_at
+		FROM users WHERE role = 'model' ORDER BY is_online DESC, name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(
+			&u.ID, &u.Phone, &u.Name, &u.Role, &u.AvatarURL, &u.Bio,
+			&u.VoiceRatePerMin, &u.GroupRatePerMin, &u.ChatRatePerMsg, &u.IsOnline, &u.IsBusy, &u.CreatedAt,
+		); err == nil {
+			list = append(list, &u)
+		}
+	}
+	return list, nil
+}
+
+func (r *userRepo) SetPresence(id string, isOnline, isBusy bool) error {
+	_, err := r.db.Exec(`UPDATE users SET is_online = $1, is_busy = $2 WHERE id = $3`, isOnline, isBusy, id)
+	return err
+}
+
+// ----------------- WALLET REPO -----------------
+type walletRepo struct{ db *sql.DB }
+
+func (r *walletRepo) GetWallet(userID string) (*domain.Wallet, error) {
+	var w domain.Wallet
+	err := r.db.QueryRow(`
+		SELECT user_id, balance, bonus_given, total_spent, total_earned, updated_at
+		FROM wallets WHERE user_id = $1
+	`, userID).Scan(&w.UserID, &w.Balance, &w.BonusGiven, &w.TotalSpent, &w.TotalEarned, &w.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
+func (r *walletRepo) GetTransactions(userID string) ([]*domain.Transaction, error) {
+	rows, err := r.db.Query(`
+		SELECT id, user_id, amount, type, description, COALESCE(call_id, ''), COALESCE(room_id, ''), created_at
+		FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.Transaction
+	for rows.Next() {
+		var tx domain.Transaction
+		if err := rows.Scan(&tx.ID, &tx.UserID, &tx.Amount, &tx.Type, &tx.Description, &tx.CallID, &tx.RoomID, &tx.CreatedAt); err == nil {
+			list = append(list, &tx)
+		}
+	}
+	return list, nil
+}
+
+func (r *walletRepo) Recharge(userID string, amount float64) (*domain.Wallet, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var w domain.Wallet
+	err = tx.QueryRow(`
+		UPDATE wallets SET balance = balance + $1, updated_at = NOW()
+		WHERE user_id = $2
+		RETURNING user_id, balance, bonus_given, total_spent, total_earned, updated_at
+	`, amount, userID).Scan(&w.UserID, &w.Balance, &w.BonusGiven, &w.TotalSpent, &w.TotalEarned, &w.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+	`, uuid.New().String(), userID, amount, domain.TxTypeRecharge, fmt.Sprintf("Wallet Recharge of ₹%.2f", amount))
+	if err != nil {
+		return nil, err
+	}
+
+	return &w, tx.Commit()
+}
+
+func (r *walletRepo) ProcessCallSettlement(callerID, receiverID, callID string, durationSec int, ratePerMin float64, reason string) (float64, error) {
+	if durationSec <= 0 {
+		return 0, nil
+	}
+
+	cost := (float64(durationSec) / 60.0) * ratePerMin
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var currentBalance float64
+	err = tx.QueryRow(`SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE`, callerID).Scan(&currentBalance)
+	if err != nil {
+		return 0, err
+	}
+
+	if cost > currentBalance {
+		cost = currentBalance
+	}
+
+	_, err = tx.Exec(`UPDATE wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE user_id = $2`, cost, callerID)
+	if err != nil {
+		return 0, err
+	}
+
+	modelShare := cost * 0.8
+	_, err = tx.Exec(`UPDATE wallets SET balance = balance + $1, total_earned = total_earned + $1, updated_at = NOW() WHERE user_id = $2`, modelShare, receiverID)
+	if err != nil {
+		return 0, err
+	}
+
+	_, _ = tx.Exec(`
+		INSERT INTO transactions (id, user_id, amount, type, description, call_id, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	`, uuid.New().String(), callerID, -cost, domain.TxTypeCallDebit, fmt.Sprintf("Voice Call (%ds @ ₹%.1f/min) - %s", durationSec, ratePerMin, reason), callID)
+
+	_, _ = tx.Exec(`
+		INSERT INTO transactions (id, user_id, amount, type, description, call_id, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	`, uuid.New().String(), receiverID, modelShare, domain.TxTypeCallCredit, fmt.Sprintf("Call Earnings (%ds @ ₹%.1f/min)", durationSec, ratePerMin), callID)
+
+	return cost, tx.Commit()
+}
+
+func (r *walletRepo) DeductChatFee(callerID, receiverID string, amount float64) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var currentBalance float64
+	err = tx.QueryRow(`SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE`, callerID).Scan(&currentBalance)
+	if err != nil || currentBalance < amount {
+		return fmt.Errorf("insufficient balance for chat message")
+	}
+
+	_, err = tx.Exec(`UPDATE wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE user_id = $2`, amount, callerID)
+	if err != nil {
+		return err
+	}
+
+	modelShare := amount * 0.8
+	_, _ = tx.Exec(`UPDATE wallets SET balance = balance + $1, total_earned = total_earned + $1, updated_at = NOW() WHERE user_id = $2`, modelShare, receiverID)
+
+	_, _ = tx.Exec(`
+		INSERT INTO transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+	`, uuid.New().String(), callerID, -amount, domain.TxTypeChatDebit, fmt.Sprintf("Chat Message to %s", receiverID))
+
+	return tx.Commit()
+}
+
+// ----------------- CALL REPO -----------------
+type callRepo struct {
+	db      *sql.DB
+	wallets repository.WalletRepository
+}
+
+func (r *callRepo) Create(c *domain.CallRecord) error {
+	_, err := r.db.Exec(`
+		INSERT INTO call_records (id, caller_id, caller_name, receiver_id, receiver_name, call_type, status, rate_per_min, started_at, ended_at, last_heartbeat, duration_seconds, total_cost, end_reason, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12, $13, $14)
+	`, c.ID, c.CallerID, c.CallerName, c.ReceiverID, c.ReceiverName, c.CallType, c.Status, c.RatePerMin, c.StartedAt, c.EndedAt, c.DurationSeconds, c.TotalCost, c.EndReason, c.CreatedAt)
+	return err
+}
+
+func (r *callRepo) Update(c *domain.CallRecord) error {
+	_, err := r.db.Exec(`
+		UPDATE call_records
+		SET status = $1, started_at = $2, ended_at = $3, duration_seconds = $4, total_cost = $5, end_reason = $6, last_heartbeat = NOW()
+		WHERE id = $7
+	`, c.Status, c.StartedAt, c.EndedAt, c.DurationSeconds, c.TotalCost, c.EndReason, c.ID)
+	return err
+}
+
+func (r *callRepo) GetByID(id string) (*domain.CallRecord, error) {
+	var c domain.CallRecord
+	err := r.db.QueryRow(`
+		SELECT id, caller_id, caller_name, receiver_id, receiver_name, call_type, status, rate_per_min, started_at, ended_at, duration_seconds, total_cost, COALESCE(end_reason, ''), created_at
+		FROM call_records WHERE id = $1
+	`, id).Scan(
+		&c.ID, &c.CallerID, &c.CallerName, &c.ReceiverID, &c.ReceiverName, &c.CallType,
+		&c.Status, &c.RatePerMin, &c.StartedAt, &c.EndedAt, &c.DurationSeconds, &c.TotalCost, &c.EndReason, &c.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (r *callRepo) GetUserHistory(userID string) ([]*domain.CallRecord, error) {
+	rows, err := r.db.Query(`
+		SELECT id, caller_id, caller_name, receiver_id, receiver_name, call_type, status, rate_per_min, started_at, ended_at, duration_seconds, total_cost, COALESCE(end_reason, ''), created_at
+		FROM call_records WHERE caller_id = $1 OR receiver_id = $1 ORDER BY created_at DESC LIMIT 50
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.CallRecord
+	for rows.Next() {
+		var c domain.CallRecord
+		if err := rows.Scan(
+			&c.ID, &c.CallerID, &c.CallerName, &c.ReceiverID, &c.ReceiverName, &c.CallType,
+			&c.Status, &c.RatePerMin, &c.StartedAt, &c.EndedAt, &c.DurationSeconds, &c.TotalCost, &c.EndReason, &c.CreatedAt,
+		); err == nil {
+			list = append(list, &c)
+		}
+	}
+	return list, nil
+}
+
+func (r *callRepo) UpdateHeartbeat(callID string) error {
+	_, err := r.db.Exec(`UPDATE call_records SET last_heartbeat = NOW() WHERE id = $1 AND status = 'active'`, callID)
+	return err
+}
+
+func (r *callRepo) RecoverInterruptedCalls() error {
+	rows, err := r.db.Query(`
+		SELECT id, caller_id, receiver_id, rate_per_min, started_at, last_heartbeat
+		FROM call_records WHERE status = 'active'
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var id, callerID, receiverID string
+		var ratePerMin float64
+		var startedAt, lastHeartbeat *time.Time
+
+		if err := rows.Scan(&id, &callerID, &receiverID, &ratePerMin, &startedAt, &lastHeartbeat); err == nil {
+			durationSec := 0
+			endedAt := time.Now()
+
+			if startedAt != nil {
+				if lastHeartbeat != nil && lastHeartbeat.After(*startedAt) {
+					durationSec = int(lastHeartbeat.Sub(*startedAt).Seconds())
+					endedAt = *lastHeartbeat
+				} else {
+					durationSec = 0
+					endedAt = *startedAt
+				}
+			}
+
+			cost, _ := r.wallets.ProcessCallSettlement(callerID, receiverID, id, durationSec, ratePerMin, "Call cut during server interruption")
+
+			_, _ = r.db.Exec(`
+				UPDATE call_records
+				SET status = 'completed', ended_at = $1, duration_seconds = $2, total_cost = $3, end_reason = 'Call cut during server interruption'
+				WHERE id = $4
+			`, endedAt, durationSec, cost, id)
+
+			_, _ = r.db.Exec(`UPDATE users SET is_busy = FALSE WHERE id = $1`, receiverID)
+			count++
+		}
+	}
+
+	if count > 0 {
+		log.Printf("🔄 Server Crash Recovery: Reconciled %d calls from heartbeat checkpoints.", count)
+	}
+	return nil
+}
+
+// ----------------- ROOM REPO -----------------
+type roomRepo struct {
+	db      *sql.DB
+	wallets repository.WalletRepository
+}
+
+func (r *roomRepo) Create(host *domain.User, title string, ratePerMin float64) (*domain.GroupRoom, error) {
+	roomID := "room_" + uuid.New().String()[:8]
+	room := &domain.GroupRoom{
+		ID:              roomID,
+		HostID:          host.ID,
+		HostName:        host.Name,
+		HostAvatar:      host.AvatarURL,
+		Title:           title,
+		RatePerMin:      ratePerMin,
+		MaxParticipants: 10,
+		IsActive:        true,
+		Participants:    make(map[string]*domain.RoomParticipant),
+		CreatedAt:       time.Now(),
+	}
+
+	_, err := r.db.Exec(`
+		INSERT INTO group_rooms (id, host_id, host_name, host_avatar, title, rate_per_min, max_participants, is_active, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, room.ID, room.HostID, room.HostName, room.HostAvatar, room.Title, room.RatePerMin, room.MaxParticipants, room.IsActive, room.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
+func (r *roomRepo) GetByID(roomID string) (*domain.GroupRoom, error) {
+	var room domain.GroupRoom
+	err := r.db.QueryRow(`
+		SELECT id, host_id, host_name, host_avatar, title, rate_per_min, max_participants, is_active, created_at
+		FROM group_rooms WHERE id = $1 AND is_active = TRUE
+	`, roomID).Scan(&room.ID, &room.HostID, &room.HostName, &room.HostAvatar, &room.Title, &room.RatePerMin, &room.MaxParticipants, &room.IsActive, &room.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	room.Participants = make(map[string]*domain.RoomParticipant)
+	return &room, nil
+}
+
+func (r *roomRepo) ListActive() ([]*domain.GroupRoom, error) {
+	rows, err := r.db.Query(`SELECT id, host_id, host_name, host_avatar, title, rate_per_min, max_participants, is_active, created_at FROM group_rooms WHERE is_active = TRUE ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.GroupRoom
+	for rows.Next() {
+		var rm domain.GroupRoom
+		if err := rows.Scan(&rm.ID, &rm.HostID, &rm.HostName, &rm.HostAvatar, &rm.Title, &rm.RatePerMin, &rm.MaxParticipants, &rm.IsActive, &rm.CreatedAt); err == nil {
+			rm.Participants = make(map[string]*domain.RoomParticipant)
+			list = append(list, &rm)
+		}
+	}
+	return list, nil
+}
+
+func (r *roomRepo) AddParticipant(roomID string, user *domain.User) (*domain.RoomParticipant, error) {
+	return &domain.RoomParticipant{UserID: user.ID, Name: user.Name, AvatarURL: user.AvatarURL, JoinedAt: time.Now(), IsHost: false}, nil
+}
+
+func (r *roomRepo) RemoveParticipant(roomID, userID, reason string) (float64, int, error) {
+	return 0, 0, nil
+}
+
+// ----------------- MESSAGE REPO -----------------
+type messageRepo struct{ db *sql.DB }
+
+func (r *messageRepo) Save(msg *domain.EphemeralMessage) error {
+	_, err := r.db.Exec(`
+		INSERT INTO ephemeral_messages (id, sender_id, receiver_id, room_id, content, cost, expires_at, is_read, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, msg.ID, msg.SenderID, msg.ReceiverID, msg.RoomID, msg.Content, msg.Cost, msg.ExpiresAt, msg.IsRead, msg.CreatedAt)
+	return err
+}
+
+func (r *messageRepo) GetActive(u1, u2 string) ([]*domain.EphemeralMessage, error) {
+	rows, err := r.db.Query(`
+		SELECT id, sender_id, receiver_id, room_id, content, cost, expires_at, is_read, created_at
+		FROM ephemeral_messages
+		WHERE ((sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1)) AND expires_at > NOW()
+	`, u1, u2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.EphemeralMessage
+	for rows.Next() {
+		var m domain.EphemeralMessage
+		if err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.RoomID, &m.Content, &m.Cost, &m.ExpiresAt, &m.IsRead, &m.CreatedAt); err == nil {
+			list = append(list, &m)
+		}
+	}
+	return list, nil
+}
+
+func (r *messageRepo) PurgeExpired() error {
+	_, err := r.db.Exec(`DELETE FROM ephemeral_messages WHERE expires_at <= NOW()`)
+	return err
+}
+
+// ----------------- PAYMENT REPO -----------------
+type paymentRepo struct{ db *sql.DB }
+
+func (r *paymentRepo) CreateOrder(order *domain.PaymentOrder) error {
+	_, err := r.db.Exec(`
+		INSERT INTO payment_orders (id, original_payment_id, user_id, amount, currency, status, gateway_name, gateway_order_id, gateway_payment_id, gateway_signature, failure_reason, refund_reason, refund_id, retry_count, created_at, updated_at, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+	`, order.ID, order.OriginalPaymentID, order.UserID, order.Amount, order.Currency, order.Status, order.GatewayName,
+		order.GatewayOrderID, order.GatewayPaymentID, order.GatewaySignature, order.FailureReason, order.RefundReason,
+		order.RefundID, order.RetryCount, order.CreatedAt, order.UpdatedAt, order.CompletedAt)
+	return err
+}
+
+func (r *paymentRepo) UpdateOrder(order *domain.PaymentOrder) error {
+	order.UpdatedAt = time.Now()
+	_, err := r.db.Exec(`
+		UPDATE payment_orders
+		SET status = $1, gateway_payment_id = $2, gateway_signature = $3, failure_reason = $4, refund_reason = $5, refund_id = $6, retry_count = $7, updated_at = $8, completed_at = $9
+		WHERE id = $10
+	`, order.Status, order.GatewayPaymentID, order.GatewaySignature, order.FailureReason, order.RefundReason, order.RefundID, order.RetryCount, order.UpdatedAt, order.CompletedAt, order.ID)
+	return err
+}
+
+func (r *paymentRepo) GetOrderByID(paymentID string) (*domain.PaymentOrder, error) {
+	var o domain.PaymentOrder
+	var origID, gwOrdID, gwPayID, gwSig, failReason, refReason, refID sql.NullString
+	err := r.db.QueryRow(`
+		SELECT id, original_payment_id, user_id, amount, currency, status, gateway_name, gateway_order_id, gateway_payment_id, gateway_signature, failure_reason, refund_reason, refund_id, retry_count, created_at, updated_at, completed_at
+		FROM payment_orders WHERE id = $1
+	`, paymentID).Scan(
+		&o.ID, &origID, &o.UserID, &o.Amount, &o.Currency, &o.Status, &o.GatewayName,
+		&gwOrdID, &gwPayID, &gwSig, &failReason, &refReason, &refID, &o.RetryCount,
+		&o.CreatedAt, &o.UpdatedAt, &o.CompletedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("payment order not found: %w", err)
+	}
+	o.OriginalPaymentID = origID.String
+	o.GatewayOrderID = gwOrdID.String
+	o.GatewayPaymentID = gwPayID.String
+	o.GatewaySignature = gwSig.String
+	o.FailureReason = failReason.String
+	o.RefundReason = refReason.String
+	o.RefundID = refID.String
+	return &o, nil
+}
+
+func (r *paymentRepo) GetOrdersByUserID(userID string) ([]*domain.PaymentOrder, error) {
+	rows, err := r.db.Query(`
+		SELECT id, original_payment_id, user_id, amount, currency, status, gateway_name, gateway_order_id, gateway_payment_id, gateway_signature, failure_reason, refund_reason, refund_id, retry_count, created_at, updated_at, completed_at
+		FROM payment_orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.PaymentOrder
+	for rows.Next() {
+		var o domain.PaymentOrder
+		var origID, gwOrdID, gwPayID, gwSig, failReason, refReason, refID sql.NullString
+		if err := rows.Scan(
+			&o.ID, &origID, &o.UserID, &o.Amount, &o.Currency, &o.Status, &o.GatewayName,
+			&gwOrdID, &gwPayID, &gwSig, &failReason, &refReason, &refID, &o.RetryCount,
+			&o.CreatedAt, &o.UpdatedAt, &o.CompletedAt,
+		); err == nil {
+			o.OriginalPaymentID = origID.String
+			o.GatewayOrderID = gwOrdID.String
+			o.GatewayPaymentID = gwPayID.String
+			o.GatewaySignature = gwSig.String
+			o.FailureReason = failReason.String
+			o.RefundReason = refReason.String
+			o.RefundID = refID.String
+			list = append(list, &o)
+		}
+	}
+	return list, nil
+}
+
+func (r *paymentRepo) RecordAuditLog(log *domain.PaymentAuditLog) error {
+	_, err := r.db.Exec(`
+		INSERT INTO payment_audit_logs (id, payment_id, from_status, to_status, event_name, gateway_ref_id, gateway_code, message, metadata_json, duration_ms, started_at, ended_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`, log.ID, log.PaymentID, log.FromStatus, log.ToStatus, log.EventName, log.GatewayRefID, log.GatewayCode, log.Message, log.MetadataJSON, log.DurationMS, log.StartedAt, log.EndedAt, log.CreatedAt)
+	return err
+}
+
+func (r *paymentRepo) GetAuditLogs(paymentID string) ([]*domain.PaymentAuditLog, error) {
+	rows, err := r.db.Query(`
+		SELECT id, payment_id, from_status, to_status, event_name, COALESCE(gateway_ref_id, ''), COALESCE(gateway_code, ''), message, COALESCE(metadata_json, ''), duration_ms, started_at, ended_at, created_at
+		FROM payment_audit_logs WHERE payment_id = $1 ORDER BY created_at ASC
+	`, paymentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.PaymentAuditLog
+	for rows.Next() {
+		var l domain.PaymentAuditLog
+		if err := rows.Scan(&l.ID, &l.PaymentID, &l.FromStatus, &l.ToStatus, &l.EventName, &l.GatewayRefID, &l.GatewayCode, &l.Message, &l.MetadataJSON, &l.DurationMS, &l.StartedAt, &l.EndedAt, &l.CreatedAt); err == nil {
+			list = append(list, &l)
+		}
+	}
+	return list, nil
+}
+
+// ----------------- MODEL ONBOARDING REPO -----------------
+type modelOnboardingRepo struct{ db *sql.DB }
+
+func (r *modelOnboardingRepo) SaveProfile(p *domain.ModelProfile) error {
+	_, err := r.db.Exec(`
+		INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, payout_upi, payout_bank_acc, payout_ifsc, audio_intro_url, status, rejection_reason, report_count, is_suspended, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+		ON CONFLICT (user_id) DO UPDATE SET
+			display_name = EXCLUDED.display_name, bio = EXCLUDED.bio, avatar_url = EXCLUDED.avatar_url,
+			age = EXCLUDED.age, gender = EXCLUDED.gender, languages = EXCLUDED.languages, interests = EXCLUDED.interests,
+			voice_rate_per_min = EXCLUDED.voice_rate_per_min, group_rate_per_min = EXCLUDED.group_rate_per_min, chat_rate_per_msg = EXCLUDED.chat_rate_per_msg,
+			payout_upi = EXCLUDED.payout_upi, payout_bank_acc = EXCLUDED.payout_bank_acc, payout_ifsc = EXCLUDED.payout_ifsc,
+			audio_intro_url = EXCLUDED.audio_intro_url, status = EXCLUDED.status, updated_at = NOW()
+	`, p.ID, p.UserID, p.DisplayName, p.Bio, p.AvatarURL, p.Age, p.Gender, p.Languages, p.Interests,
+		p.VoiceRatePerMin, p.GroupRatePerMin, p.ChatRatePerMsg, p.PayoutUPI, p.PayoutBankAcc, p.PayoutIFSC,
+		p.AudioIntroURL, p.Status, p.RejectionReason, p.ReportCount, p.IsSuspended, p.CreatedAt, p.UpdatedAt)
+	return err
+}
+
+func (r *modelOnboardingRepo) UpdateProfile(p *domain.ModelProfile) error {
+	p.UpdatedAt = time.Now()
+	_, err := r.db.Exec(`
+		UPDATE model_profiles
+		SET display_name = $1, bio = $2, avatar_url = $3, age = $4, gender = $5, languages = $6, interests = $7,
+		    voice_rate_per_min = $8, group_rate_per_min = $9, chat_rate_per_msg = $10, payout_upi = $11, payout_bank_acc = $12,
+		    payout_ifsc = $13, audio_intro_url = $14, status = $15, rejection_reason = $16, report_count = $17, is_suspended = $18, updated_at = $19
+		WHERE user_id = $20
+	`, p.DisplayName, p.Bio, p.AvatarURL, p.Age, p.Gender, p.Languages, p.Interests,
+		p.VoiceRatePerMin, p.GroupRatePerMin, p.ChatRatePerMsg, p.PayoutUPI, p.PayoutBankAcc,
+		p.PayoutIFSC, p.AudioIntroURL, p.Status, p.RejectionReason, p.ReportCount, p.IsSuspended, p.UpdatedAt, p.UserID)
+	return err
+}
+
+func (r *modelOnboardingRepo) GetProfileByUserID(userID string) (*domain.ModelProfile, error) {
+	var p domain.ModelProfile
+	var upi, bankAcc, ifsc, audioURL, rejReason sql.NullString
+	err := r.db.QueryRow(`
+		SELECT id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, payout_upi, payout_bank_acc, payout_ifsc, audio_intro_url, status, rejection_reason, report_count, is_suspended, created_at, updated_at
+		FROM model_profiles WHERE user_id = $1
+	`, userID).Scan(
+		&p.ID, &p.UserID, &p.DisplayName, &p.Bio, &p.AvatarURL, &p.Age, &p.Gender, &p.Languages, &p.Interests,
+		&p.VoiceRatePerMin, &p.GroupRatePerMin, &p.ChatRatePerMsg, &upi, &bankAcc, &ifsc, &audioURL,
+		&p.Status, &rejReason, &p.ReportCount, &p.IsSuspended, &p.CreatedAt, &p.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("model profile not found: %w", err)
+	}
+	p.PayoutUPI = upi.String
+	p.PayoutBankAcc = bankAcc.String
+	p.PayoutIFSC = ifsc.String
+	p.AudioIntroURL = audioURL.String
+	p.RejectionReason = rejReason.String
+	return &p, nil
+}
+
+func (r *modelOnboardingRepo) ListPendingProfiles() ([]*domain.ModelProfile, error) {
+	rows, err := r.db.Query(`
+		SELECT id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, payout_upi, payout_bank_acc, payout_ifsc, audio_intro_url, status, rejection_reason, report_count, is_suspended, created_at, updated_at
+		FROM model_profiles WHERE status = 'pending_review' ORDER BY created_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.ModelProfile
+	for rows.Next() {
+		var p domain.ModelProfile
+		var upi, bankAcc, ifsc, audioURL, rejReason sql.NullString
+		if err := rows.Scan(
+			&p.ID, &p.UserID, &p.DisplayName, &p.Bio, &p.AvatarURL, &p.Age, &p.Gender, &p.Languages, &p.Interests,
+			&p.VoiceRatePerMin, &p.GroupRatePerMin, &p.ChatRatePerMsg, &upi, &bankAcc, &ifsc, &audioURL,
+			&p.Status, &rejReason, &p.ReportCount, &p.IsSuspended, &p.CreatedAt, &p.UpdatedAt,
+		); err == nil {
+			p.PayoutUPI = upi.String
+			p.PayoutBankAcc = bankAcc.String
+			p.PayoutIFSC = ifsc.String
+			p.AudioIntroURL = audioURL.String
+			p.RejectionReason = rejReason.String
+			list = append(list, &p)
+		}
+	}
+	return list, nil
+}
+
+func (r *modelOnboardingRepo) IncrementReportCount(modelID string) (int, error) {
+	var newCount int
+	err := r.db.QueryRow(`
+		INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, report_count, status, created_at, updated_at)
+		VALUES ($1, $2, 'Host', 'Bio', '', 18, 'Other', 'English', '', 1, 'approved', NOW(), NOW())
+		ON CONFLICT (user_id) DO UPDATE SET report_count = model_profiles.report_count + 1, updated_at = NOW()
+		RETURNING report_count
+	`, "prof_"+modelID, modelID).Scan(&newCount)
+	return newCount, err
+}
+
+func (r *modelOnboardingRepo) SetSuspension(modelID string, isSuspended bool) error {
+	_, err := r.db.Exec(`UPDATE model_profiles SET is_suspended = $1, updated_at = NOW() WHERE user_id = $2`, isSuspended, modelID)
+	return err
+}
+
+// ----------------- REPORT REPOSITORY -----------------
+type reportRepo struct{ db *sql.DB }
+
+func (r *reportRepo) CreateReport(report *domain.ModelReport) error {
+	_, err := r.db.Exec(`
+		INSERT INTO model_reports (id, reporter_id, reporter_name, model_id, model_name, call_id, room_id, category, description, status, admin_action, admin_note, created_at, resolved_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	`, report.ID, report.ReporterID, report.ReporterName, report.ModelID, report.ModelName,
+		report.CallID, report.RoomID, report.Category, report.Description, report.Status,
+		report.AdminAction, report.AdminNote, report.CreatedAt, report.ResolvedAt)
+	return err
+}
+
+func (r *reportRepo) UpdateReport(report *domain.ModelReport) error {
+	_, err := r.db.Exec(`
+		UPDATE model_reports
+		SET status = $1, admin_action = $2, admin_note = $3, resolved_at = $4
+		WHERE id = $5
+	`, report.Status, report.AdminAction, report.AdminNote, report.ResolvedAt, report.ID)
+	return err
+}
+
+func (r *reportRepo) GetReportByID(id string) (*domain.ModelReport, error) {
+	var rep domain.ModelReport
+	var callID, roomID, action, note sql.NullString
+	err := r.db.QueryRow(`
+		SELECT id, reporter_id, reporter_name, model_id, model_name, call_id, room_id, category, description, status, admin_action, admin_note, created_at, resolved_at
+		FROM model_reports WHERE id = $1
+	`, id).Scan(
+		&rep.ID, &rep.ReporterID, &rep.ReporterName, &rep.ModelID, &rep.ModelName,
+		&callID, &roomID, &rep.Category, &rep.Description, &rep.Status, &action, &note,
+		&rep.CreatedAt, &rep.ResolvedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("report not found: %w", err)
+	}
+	rep.CallID = callID.String
+	rep.RoomID = roomID.String
+	rep.AdminAction = action.String
+	rep.AdminNote = note.String
+	return &rep, nil
+}
+
+func (r *reportRepo) GetReportsForModel(modelID string) ([]*domain.ModelReport, error) {
+	rows, err := r.db.Query(`
+		SELECT id, reporter_id, reporter_name, model_id, model_name, call_id, room_id, category, description, status, admin_action, admin_note, created_at, resolved_at
+		FROM model_reports WHERE model_id = $1 ORDER BY created_at DESC LIMIT 50
+	`, modelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.ModelReport
+	for rows.Next() {
+		var rep domain.ModelReport
+		var callID, roomID, action, note sql.NullString
+		if err := rows.Scan(
+			&rep.ID, &rep.ReporterID, &rep.ReporterName, &rep.ModelID, &rep.ModelName,
+			&callID, &roomID, &rep.Category, &rep.Description, &rep.Status, &action, &note,
+			&rep.CreatedAt, &rep.ResolvedAt,
+		); err == nil {
+			rep.CallID = callID.String
+			rep.RoomID = roomID.String
+			rep.AdminAction = action.String
+			rep.AdminNote = note.String
+			list = append(list, &rep)
+		}
+	}
+	return list, nil
+}
+
+func (r *reportRepo) ListRecentReports() ([]*domain.ModelReport, error) {
+	rows, err := r.db.Query(`
+		SELECT id, reporter_id, reporter_name, model_id, model_name, call_id, room_id, category, description, status, admin_action, admin_note, created_at, resolved_at
+		FROM model_reports ORDER BY created_at DESC LIMIT 50
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.ModelReport
+	for rows.Next() {
+		var rep domain.ModelReport
+		var callID, roomID, action, note sql.NullString
+		if err := rows.Scan(
+			&rep.ID, &rep.ReporterID, &rep.ReporterName, &rep.ModelID, &rep.ModelName,
+			&callID, &roomID, &rep.Category, &rep.Description, &rep.Status, &action, &note,
+			&rep.CreatedAt, &rep.ResolvedAt,
+		); err == nil {
+			rep.CallID = callID.String
+			rep.RoomID = roomID.String
+			rep.AdminAction = action.String
+			rep.AdminNote = note.String
+			list = append(list, &rep)
+		}
+	}
+	return list, rows.Err()
+}
+
+// ----------------- FAVORITE REPO (POSTGRESQL) -----------------
+type favoriteRepo struct{ db *sql.DB }
+
+func (r *favoriteRepo) ToggleFavorite(userID, modelID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM user_favorites WHERE user_id = $1 AND model_id = $2)
+	`, userID, modelID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	if exists {
+		_, err = r.db.Exec(`DELETE FROM user_favorites WHERE user_id = $1 AND model_id = $2`, userID, modelID)
+		if err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+
+	_, err = r.db.Exec(`
+		INSERT INTO user_favorites (user_id, model_id, created_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (user_id, model_id) DO NOTHING
+	`, userID, modelID)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *favoriteRepo) IsFavorite(userID, modelID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM user_favorites WHERE user_id = $1 AND model_id = $2)
+	`, userID, modelID).Scan(&exists)
+	return exists, err
+}
+
+func (r *favoriteRepo) GetFavoriteModelIDs(userID string) ([]string, error) {
+	rows, err := r.db.Query(`
+		SELECT model_id FROM user_favorites WHERE user_id = $1 ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
+}
+
+func (r *favoriteRepo) GetFavoriteModels(userID string) ([]*domain.User, error) {
+	rows, err := r.db.Query(`
+		SELECT u.id, u.phone, u.name, u.role, u.avatar_url, u.bio,
+		       u.voice_rate_per_min, u.group_rate_per_min, u.chat_rate_per_msg,
+		       u.is_online, u.is_busy, u.created_at
+		FROM users u
+		JOIN user_favorites f ON u.id = f.model_id
+		WHERE f.user_id = $1 AND u.role = 'model'
+		ORDER BY f.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(
+			&u.ID, &u.Phone, &u.Name, &u.Role, &u.AvatarURL, &u.Bio,
+			&u.VoiceRatePerMin, &u.GroupRatePerMin, &u.ChatRatePerMsg,
+			&u.IsOnline, &u.IsBusy, &u.CreatedAt,
+		); err == nil {
+			list = append(list, &u)
+		}
+	}
+	return list, rows.Err()
+}
+
