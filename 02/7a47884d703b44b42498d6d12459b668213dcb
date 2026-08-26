@@ -1,0 +1,78 @@
+internal/usecase/payment_usecase.go
+  h_9c8c4b23da7963 296
+internal/dto/dtos.go
+  h_9c8c4b23da7963 9,24
+  h_9c8c4b23da7963 71-87,146,189
+internal/delivery/ws/sender.go
+  h_9c8c4b23da7963 1-29
+internal/delivery/ws/types.go
+  h_9c8c4b23da7963 1-53
+pkg/handlers/handlers.go
+  h_9c8c4b23da7963 61,83
+  h_9c8c4b23da7963 196-197
+internal/usecase/favorite_usecase.go
+  h_9c8c4b23da7963 8-9
+internal/delivery/http/auth_handler.go
+  h_9c8c4b23da7963 1-27
+internal/delivery/http/call_handler.go
+  h_9c8c4b23da7963 1-29
+internal/delivery/http/favorites_handler.go
+  h_9c8c4b23da7963 1,4-5,10-14,16-19,21-23,25,27-28,30,33-37,39-42,44,46-47,49,52-56,58-61,63,65-66,68
+internal/delivery/http/handler.go
+  h_9c8c4b23da7963 3,5,17-27
+internal/delivery/http/models_handler.go
+  h_9c8c4b23da7963 1-43
+internal/delivery/http/payment_routes.go
+  h_9c8c4b23da7963 1,4-5,10-14,16-19,21-23,25,27-28,30,33-37,39-42,44,46-47,49-50,52-56,58-62,64-65,67-70,72-73,75-79,81-83,85-88,90,92-93,95-96,98-102,104-107,109-112,114
+internal/delivery/http/responder.go
+  h_9c8c4b23da7963 1-35
+internal/delivery/http/room_handler.go
+  h_9c8c4b23da7963 1-45
+internal/delivery/http/safety_routes.go
+  h_9c8c4b23da7963 1,4-5,11-34,36-37,39-43,45-50,52-53,55-56,58-62,64-67,69-71,73-75,77,79-80,82-83,85-89,91-99,101
+internal/delivery/http/wallet_handler.go
+  h_9c8c4b23da7963 1-45
+internal/delivery/ws/client.go
+  h_9c8c4b23da7963 1-73
+internal/delivery/ws/handlers/call_handler.go
+  h_9c8c4b23da7963 1-50
+internal/delivery/ws/handlers/chat_handler.go
+  h_9c8c4b23da7963 1-36
+internal/delivery/ws/handlers/room_handler.go
+  h_9c8c4b23da7963 1-50
+internal/delivery/ws/handlers/webrtc_handler.go
+  h_9c8c4b23da7963 1-33
+internal/delivery/ws/hub.go
+  h_9c8c4b23da7963 7-8,15,18,20-21,24-25,27-28,32,34-36,38-39,42,44,47-50,53-55,58-60,63-67,69,72-75
+internal/delivery/ws/router.go
+  h_9c8c4b23da7963 1-49
+main.go
+  h_9c8c4b23da7963 15,87-92
+pkg/common/registry.go
+  h_9c8c4b23da7963 1-56
+pkg/common/response.go
+  h_9c8c4b23da7963 1-43
+pkg/common/result.go
+  h_9c8c4b23da7963 1-31
+pkg/proto/encoder.go
+  h_9c8c4b23da7963 1-31
+pkg/proto/models.go
+  h_9c8c4b23da7963 1-31
+pkg/proto/wire.go
+  h_9c8c4b23da7963 1-45
+proto/response.proto
+  h_9c8c4b23da7963 1-23
+proto/signaling.proto
+  h_9c8c4b23da7963 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "027a47884d703b44b42498d6d12459b668213dcb",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
