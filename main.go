@@ -12,6 +12,7 @@ import (
 
 	deliveryHttp "Connect/internal/delivery/http"
 	deliveryWs "Connect/internal/delivery/ws"
+	wsHandlers "Connect/internal/delivery/ws/handlers"
 	"Connect/internal/mapper"
 	"Connect/internal/repository"
 	"Connect/internal/repository/memory"
@@ -83,7 +84,12 @@ func main() {
 
 	// 4. Initialize Delivery Layer (HTTP Controllers & WebSocket Signaling Hub)
 	httpDelivery := deliveryHttp.NewHTTPHandler(authUC, walletUC, callUC, roomUC, paymentUC, onboardUC, reportUC, favoriteUC)
-	wsHub := deliveryWs.NewHub(authUC, callUC, roomUC, walletRepo, callRepo)
+	wsRouter := deliveryWs.NewRouter()
+	wsHub := deliveryWs.NewHub(wsRouter)
+	wsRouter.Register(wsHandlers.NewWebRTCHandler(wsHub))
+	wsRouter.Register(wsHandlers.NewCallHandler(wsHub, callUC))
+	wsRouter.Register(wsHandlers.NewRoomHandler(wsHub, roomUC))
+	wsRouter.Register(wsHandlers.NewChatHandler(wsHub))
 
 	// 5. Register Routes
 	mux := http.NewServeMux()

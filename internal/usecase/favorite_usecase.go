@@ -1,13 +1,12 @@
 package usecase
 
 import (
-	"errors"
-	"fmt"
-
 	"Connect/internal/domain"
 	"Connect/internal/dto"
 	"Connect/internal/mapper"
 	"Connect/internal/repository"
+	"errors"
+	"fmt"
 )
 
 type FavoriteUseCase struct {

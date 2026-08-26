@@ -58,7 +58,7 @@ func (h *APIHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	user, token, isNew := h.store.CreateOrLoginUser(req.Phone, req.Name, req.Role)
 	wallet, _ := h.store.GetWallet(user.ID)
 
-	sendJSON(w, http.StatusOK, map[string]interface{}{
+	sendJSON(w, http.StatusOK, map[string]any{
 		"user":        user,
 		"token":       token,
 		"is_new_user": isNew,
@@ -80,7 +80,7 @@ func (h *APIHandler) HandleListModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	modelsList := h.store.ListModels()
-	sendJSON(w, http.StatusOK, map[string]interface{}{
+	sendJSON(w, http.StatusOK, map[string]any{
 		"count":  len(modelsList),
 		"models": modelsList,
 	})
@@ -193,8 +193,8 @@ func (h *APIHandler) HandleCallHistory(w http.ResponseWriter, r *http.Request) {
 
 	calls := h.store.GetUserCallHistory(user.ID)
 	sendJSON(w, http.StatusOK, map[string]interface{}{
-		"count": len(calls),
-		"calls": calls,
+		"count":          len(calls),
+		"calls":          calls,
 		"privacy_notice": "Calls are End-to-End Encrypted. No audio recordings or voice files are stored on any servers.",
 	})
 }

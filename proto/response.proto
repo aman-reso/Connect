@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "Connect/proto";
+
+message ApiResponseProto {
+  bool success = 1;
+  int32 status_code = 2;
+  string message = 3;
+  bytes data_payload = 4;
+  string error = 5;
+  int64 timestamp = 6;
+}
+
+message PaginationMetaProto {
+  int32 current_page = 1;
+  int32 limit = 2;
+  int32 total_count = 3;
+  int32 total_pages = 4;
+  bool has_next = 5;
+  bool has_prev = 6;
+}

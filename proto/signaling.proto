@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "Connect/proto";
+
+message SignalMessageProto {
+  string type = 1;
+  string from_user_id = 2;
+  string to_user_id = 3;
+  string room_id = 4;
+  string call_type = 5;
+  string sdp = 6;
+  string candidate = 7;
+  string sdp_mid = 8;
+  int32 sdp_m_line_index = 9;
+  string reason = 10;
+  string content = 11;
+  int64 timestamp = 12;
+  double balance = 13;
+  double rate = 14;
+  int64 duration_sec = 15;
+  double total_cost = 16;
+}

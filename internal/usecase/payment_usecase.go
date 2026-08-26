@@ -293,7 +293,7 @@ func (uc *PaymentUseCase) InitiateRefund(paymentID string, reason string) (*dto.
 	return uc.mapper.ToPaymentOrderResponse(order, "Refund processed successfully"), nil
 }
 
-// 5. Payment Timeline & Audit Trail
+// GetPaymentTimeline 5. Payment Timeline & Audit Trail
 func (uc *PaymentUseCase) GetPaymentTimeline(paymentID string) (*dto.PaymentTimelineResponse, error) {
 	order, err := uc.paymentRepo.GetOrderByID(paymentID)
 	if err != nil {

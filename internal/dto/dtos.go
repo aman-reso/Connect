@@ -6,7 +6,7 @@ import (
 	"Connect/internal/domain"
 )
 
-// Auth DTOs
+// RegisterRequest Auth DTOs
 type RegisterRequest struct {
 	Phone string          `json:"phone"`
 	Name  string          `json:"name"`
@@ -21,7 +21,7 @@ type AuthResponse struct {
 	Message   string         `json:"message"`
 }
 
-// Pagination Metadata
+// PaginationMeta Pagination Metadata
 type PaginationMeta struct {
 	CurrentPage int  `json:"current_page"`
 	Limit       int  `json:"limit"`
@@ -68,23 +68,23 @@ type ModelCardDTO struct {
 
 // Model Filter Query DTO
 type ModelFilterQuery struct {
-	Filter        string   `json:"filter"` // "all", "nearby", "new", "top", "online"
-	Lat           float64  `json:"lat"`
-	Lng           float64  `json:"lng"`
-	MaxDistanceKM float64  `json:"max_distance_km"`
-	City          string   `json:"city"`
-	State         string   `json:"state"`
-	MinAge        int      `json:"min_age"`
-	MaxAge        int      `json:"max_age"`
-	Gender        string   `json:"gender"`
-	Language      string   `json:"language"`
-	Interest      string   `json:"interest"`
-	MinRate       float64  `json:"min_rate"`
-	MaxRate       float64  `json:"max_rate"`
-	IsOnline      *bool    `json:"is_online"`
-	SortBy        string   `json:"sort_by"` // "distance", "rating", "newest", "calls", "price_low", "price_high", "popularity"
-	Page          int      `json:"page"`
-	Limit         int      `json:"limit"`
+	Filter        string  `json:"filter"` // "all", "nearby", "new", "top", "online"
+	Lat           float64 `json:"lat"`
+	Lng           float64 `json:"lng"`
+	MaxDistanceKM float64 `json:"max_distance_km"`
+	City          string  `json:"city"`
+	State         string  `json:"state"`
+	MinAge        int     `json:"min_age"`
+	MaxAge        int     `json:"max_age"`
+	Gender        string  `json:"gender"`
+	Language      string  `json:"language"`
+	Interest      string  `json:"interest"`
+	MinRate       float64 `json:"min_rate"`
+	MaxRate       float64 `json:"max_rate"`
+	IsOnline      *bool   `json:"is_online"`
+	SortBy        string  `json:"sort_by"` // "distance", "rating", "newest", "calls", "price_low", "price_high", "popularity"
+	Page          int     `json:"page"`
+	Limit         int     `json:"limit"`
 }
 
 // Model List Response DTO (Paginated & Filter-Aware)
@@ -143,7 +143,7 @@ type CallTickDTO struct {
 // Payment System DTOs
 type CreatePaymentOrderRequest struct {
 	Amount      float64 `json:"amount"`
-	Currency    string  `json:"currency,omitempty"` // Default "INR"
+	Currency    string  `json:"currency,omitempty"`     // Default "INR"
 	GatewayName string  `json:"gateway_name,omitempty"` // Default "razorpay"
 }
 
@@ -186,7 +186,7 @@ type ModelOnboardingRequest struct {
 	AvatarURL                string   `json:"avatar_url"`
 	GalleryURLs              []string `json:"gallery_urls,omitempty"`
 	DateOfBirth              string   `json:"date_of_birth,omitempty"` // YYYY-MM-DD
-	Age                      int      `json:"age"`                      // Must be >= 18
+	Age                      int      `json:"age"`                     // Must be >= 18
 	Gender                   string   `json:"gender"`
 	GovtIDType               string   `json:"govt_id_type,omitempty"` // "aadhaar", "pan", "passport", "voter_id", "driving_license"
 	GovtIDNumber             string   `json:"govt_id_number,omitempty"`
@@ -261,4 +261,3 @@ type FavoriteModelsResponse struct {
 	Count  int            `json:"count"`
 	Models []*domain.User `json:"models"`
 }
-
