@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"Connect/internal/domain"
@@ -65,14 +66,61 @@ func (h *HTTPHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, resp)
 }
 
-// 2. Models Listing
+// 2. Models Discovery (Nearby, New, Top, Filters, Demographics, & Pagination)
 func (h *HTTPHandler) HandleModels(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	resp, err := h.authUC.ListModels()
+	q := r.URL.Query()
+	filterQuery := dto.ModelFilterQuery{
+		Filter:   q.Get("filter"),
+		City:     q.Get("city"),
+		State:    q.Get("state"),
+		Gender:   q.Get("gender"),
+		Language: q.Get("language"),
+		Interest: q.Get("interest"),
+		SortBy:   q.Get("sort_by"),
+	}
+
+	if filterQuery.Filter == "" {
+		filterQuery.Filter = "all"
+	}
+
+	if latStr := q.Get("lat"); latStr != "" {
+		filterQuery.Lat, _ = strconv.ParseFloat(latStr, 64)
+	}
+	if lngStr := q.Get("lng"); lngStr != "" {
+		filterQuery.Lng, _ = strconv.ParseFloat(lngStr, 64)
+	}
+	if maxDistStr := q.Get("max_distance_km"); maxDistStr != "" {
+		filterQuery.MaxDistanceKM, _ = strconv.ParseFloat(maxDistStr, 64)
+	}
+	if minAgeStr := q.Get("min_age"); minAgeStr != "" {
+		filterQuery.MinAge, _ = strconv.Atoi(minAgeStr)
+	}
+	if maxAgeStr := q.Get("max_age"); maxAgeStr != "" {
+		filterQuery.MaxAge, _ = strconv.Atoi(maxAgeStr)
+	}
+	if minRateStr := q.Get("min_rate"); minRateStr != "" {
+		filterQuery.MinRate, _ = strconv.ParseFloat(minRateStr, 64)
+	}
+	if maxRateStr := q.Get("max_rate"); maxRateStr != "" {
+		filterQuery.MaxRate, _ = strconv.ParseFloat(maxRateStr, 64)
+	}
+	if onlineStr := q.Get("is_online"); onlineStr != "" {
+		isOnline := (onlineStr == "true" || onlineStr == "1")
+		filterQuery.IsOnline = &isOnline
+	}
+	if pageStr := q.Get("page"); pageStr != "" {
+		filterQuery.Page, _ = strconv.Atoi(pageStr)
+	}
+	if limitStr := q.Get("limit"); limitStr != "" {
+		filterQuery.Limit, _ = strconv.Atoi(limitStr)
+	}
+
+	resp, err := h.authUC.ListModelsAdvanced(&filterQuery)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, err.Error())
 		return

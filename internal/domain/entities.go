@@ -27,21 +27,33 @@ const (
 
 // User Entity
 type User struct {
-	ID              string    `json:"id"`
-	Phone           string    `json:"phone"`
-	Name            string    `json:"name"`
-	Role            UserRole  `json:"role"` // "user" or "model"
-	AvatarURL       string    `json:"avatar_url"`
-	Bio             string    `json:"bio,omitempty"`
-	VoiceRatePerMin float64   `json:"voice_rate_per_min"`
-	GroupRatePerMin float64   `json:"group_rate_per_min"`
-	ChatRatePerMsg  float64   `json:"chat_rate_per_msg"`
-	IsOnline        bool      `json:"is_online"`
-	IsBusy          bool      `json:"is_busy"`
-	ActiveToken     string    `json:"active_token,omitempty"` // Single-Device Session Enforcement
-	DeviceID        string    `json:"device_id,omitempty"`
-	ActiveRoomID    string    `json:"active_room_id,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID                 string    `json:"id"`
+	Phone              string    `json:"phone"`
+	Name               string    `json:"name"`
+	Role               UserRole  `json:"role"` // "user" or "model"
+	AvatarURL          string    `json:"avatar_url"`
+	Bio                string    `json:"bio,omitempty"`
+	Age                int       `json:"age"`
+	Gender             string    `json:"gender,omitempty"`
+	City               string    `json:"city,omitempty"`
+	State              string    `json:"state,omitempty"`
+	Country            string    `json:"country,omitempty"`
+	Latitude           float64   `json:"latitude,omitempty"`
+	Longitude          float64   `json:"longitude,omitempty"`
+	Rating             float64   `json:"rating"`
+	ReviewCount        int       `json:"review_count"`
+	TotalCallsCount    int       `json:"total_calls_count"`
+	TotalMinutesSpoken int       `json:"total_minutes_spoken"`
+	VoiceRatePerMin    float64   `json:"voice_rate_per_min"`
+	VideoRatePerMin    float64   `json:"video_rate_per_min"`
+	GroupRatePerMin    float64   `json:"group_rate_per_min"`
+	ChatRatePerMsg     float64   `json:"chat_rate_per_msg"`
+	IsOnline           bool      `json:"is_online"`
+	IsBusy             bool      `json:"is_busy"`
+	ActiveToken        string    `json:"active_token,omitempty"` // Single-Device Session Enforcement
+	DeviceID           string    `json:"device_id,omitempty"`
+	ActiveRoomID       string    `json:"active_room_id,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 // Wallet Entity
@@ -197,30 +209,86 @@ const (
 	OnboardingStatusRejected      OnboardingStatus = "rejected"
 )
 
-// ModelProfile Entity (KYC, verification, custom rates, payout bank)
+// ModelProfile Entity (Full Creator Onboarding, KYC, verification, custom rates, payout bank)
 type ModelProfile struct {
-	ID              string           `json:"id"`
-	UserID          string           `json:"user_id"`
-	DisplayName     string           `json:"display_name"`
-	Bio             string           `json:"bio"`
-	AvatarURL       string           `json:"avatar_url"`
-	Age             int              `json:"age"` // Must be >= 18
-	Gender          string           `json:"gender"`
-	Languages       string           `json:"languages"` // e.g. "English, Hindi, Punjabi"
-	Interests       string           `json:"interests"` // e.g. "Music, Astrology, Tech"
-	VoiceRatePerMin float64          `json:"voice_rate_per_min"`
-	GroupRatePerMin float64          `json:"group_rate_per_min"`
-	ChatRatePerMsg  float64          `json:"chat_rate_per_msg"`
-	PayoutUPI       string           `json:"payout_upi,omitempty"`
-	PayoutBankAcc   string           `json:"payout_bank_acc,omitempty"`
-	PayoutIFSC      string           `json:"payout_ifsc,omitempty"`
-	AudioIntroURL   string           `json:"audio_intro_url,omitempty"`
-	Status          OnboardingStatus `json:"status"` // "pending_review", "approved", "rejected"
-	RejectionReason string           `json:"rejection_reason,omitempty"`
-	ReportCount     int              `json:"report_count"`
-	IsSuspended     bool             `json:"is_suspended"`
-	CreatedAt       time.Time        `json:"created_at"`
-	UpdatedAt       time.Time        `json:"updated_at"`
+	ID                         string           `json:"id"`
+	UserID                     string           `json:"user_id"`
+	FullLegalName              string           `json:"full_legal_name,omitempty"`
+	DisplayName                string           `json:"display_name"`
+	Bio                        string           `json:"bio"`
+	AvatarURL                  string           `json:"avatar_url"`
+	GalleryURLs                []string         `json:"gallery_urls,omitempty"`
+	DateOfBirth                string           `json:"date_of_birth,omitempty"`
+	Age                        int              `json:"age"` // Must be >= 18
+	Gender                     string           `json:"gender"`
+	GovtIDType                 string           `json:"govt_id_type,omitempty"` // "aadhaar", "pan", "passport", "voter_id", "driving_license"
+	GovtIDNumber               string           `json:"govt_id_number,omitempty"`
+	GovtIDDocURL               string           `json:"govt_id_doc_url,omitempty"`
+	SelfieVerificationURL      string           `json:"selfie_verification_url,omitempty"`
+	City                       string           `json:"city,omitempty"`
+	State                      string           `json:"state,omitempty"`
+	Country                    string           `json:"country,omitempty"`
+	Pincode                    string           `json:"pincode,omitempty"`
+	AddressLine                string           `json:"address_line,omitempty"`
+	Latitude                   float64          `json:"latitude,omitempty"`
+	Longitude                  float64          `json:"longitude,omitempty"`
+	Languages                  string           `json:"languages"` // e.g. "English, Hindi, Punjabi"
+	Interests                  string           `json:"interests"` // e.g. "Music, Astrology, Tech"
+	VoiceRatePerMin            float64          `json:"voice_rate_per_min"`
+	VideoRatePerMin            float64          `json:"video_rate_per_min"`
+	GroupRatePerMin            float64          `json:"group_rate_per_min"`
+	ChatRatePerMsg             float64          `json:"chat_rate_per_msg"`
+	PayoutMethod               string           `json:"payout_method,omitempty"` // "upi" or "bank_transfer"
+	PayoutUPI                  string           `json:"payout_upi,omitempty"`
+	PayoutBankAcc              string           `json:"payout_bank_acc,omitempty"`
+	PayoutIFSC                 string           `json:"payout_ifsc,omitempty"`
+	PayoutBeneficiaryName      string           `json:"payout_beneficiary_name,omitempty"`
+	PANNumber                  string           `json:"pan_number,omitempty"` // For TDS compliance
+	AudioIntroURL              string           `json:"audio_intro_url,omitempty"`
+	Status                     OnboardingStatus `json:"status"` // "pending_review", "approved", "rejected"
+	RejectionReason            string           `json:"rejection_reason,omitempty"`
+	AgreedToSafetyGuidelines   bool             `json:"agreed_to_safety_guidelines"`
+	AgreedToTerms              bool             `json:"agreed_to_terms"`
+	SafetyAcceptedAt           *time.Time       `json:"safety_accepted_at,omitempty"`
+	ReportCount                int              `json:"report_count"`
+	IsSuspended                bool             `json:"is_suspended"`
+	CreatedAt                  time.Time        `json:"created_at"`
+	UpdatedAt                  time.Time        `json:"updated_at"`
+}
+
+// ModelFilterParams domain object for filtering & location-based discovery
+type ModelFilterParams struct {
+	Filter        string   `json:"filter"` // "all", "nearby", "new", "top", "online"
+	Latitude      float64  `json:"latitude"`
+	Longitude     float64  `json:"longitude"`
+	MaxDistanceKM float64  `json:"max_distance_km"`
+	City          string   `json:"city"`
+	State         string   `json:"state"`
+	MinAge        int      `json:"min_age"`
+	MaxAge        int      `json:"max_age"`
+	Gender        string   `json:"gender"`
+	Language      string   `json:"language"`
+	Interest      string   `json:"interest"`
+	MinRate       float64  `json:"min_rate"`
+	MaxRate       float64  `json:"max_rate"`
+	IsOnline      *bool    `json:"is_online"`
+	SortBy        string   `json:"sort_by"` // "distance", "rating", "newest", "calls", "price_low", "price_high", "popularity"
+	Page          int      `json:"page"`
+	Limit         int      `json:"limit"`
+}
+
+// ModelItem represents a rich model entity returned in search/discovery
+type ModelItem struct {
+	User
+	DisplayName     string   `json:"display_name"`
+	DistanceKM      *float64 `json:"distance_km,omitempty"`
+	Languages       []string `json:"languages"`
+	Interests       []string `json:"interests"`
+	GalleryURLs     []string `json:"gallery_urls,omitempty"`
+	AudioIntroURL   string   `json:"audio_intro_url,omitempty"`
+	Badges          []string `json:"badges"`
+	IsNew           bool     `json:"is_new"`
+	ProfileVerified bool     `json:"profile_verified"`
 }
 
 // Report Category & Status

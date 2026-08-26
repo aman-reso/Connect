@@ -3,6 +3,9 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"math"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -81,46 +84,108 @@ type memoryData struct {
 func (d *memoryData) seedDefaultModels() {
 	seedModels := []*domain.User{
 		{
-			ID:              "model-1",
-			Phone:           "9876543210",
-			Name:            "Aanya Sharma",
-			Role:            domain.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Love deep late-night conversations, music & psychology 🌙",
-			VoiceRatePerMin: 10.0,
-			GroupRatePerMin: 5.0,
-			ChatRatePerMsg:  1.0,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
+			ID:                 "model-1",
+			Phone:              "9876543210",
+			Name:               "Aanya Sharma",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Love deep late-night conversations, music & psychology 🌙",
+			Age:                22,
+			Gender:             "female",
+			City:               "New Delhi",
+			State:              "Delhi",
+			Country:            "India",
+			Latitude:           28.6139,
+			Longitude:          77.2090,
+			Rating:             4.95,
+			ReviewCount:        142,
+			TotalCallsCount:    380,
+			TotalMinutesSpoken: 2600,
+			VoiceRatePerMin:    10.0,
+			VideoRatePerMin:    20.0,
+			GroupRatePerMin:    5.0,
+			ChatRatePerMsg:     1.0,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-15 * 24 * time.Hour),
 		},
 		{
-			ID:              "model-2",
-			Phone:           "9876543211",
-			Name:            "Riya Sen",
-			Role:            domain.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Artist & traveler. Let's talk about dreams & coffee ☕✨",
-			VoiceRatePerMin: 15.0,
-			GroupRatePerMin: 7.0,
-			ChatRatePerMsg:  2.0,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
+			ID:                 "model-2",
+			Phone:              "9876543211",
+			Name:               "Riya Sen",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Artist & traveler. Let's talk about dreams & coffee ☕✨",
+			Age:                24,
+			Gender:             "female",
+			City:               "Mumbai",
+			State:              "Maharashtra",
+			Country:            "India",
+			Latitude:           19.0760,
+			Longitude:          72.8777,
+			Rating:             4.88,
+			ReviewCount:        96,
+			TotalCallsCount:    210,
+			TotalMinutesSpoken: 1450,
+			VoiceRatePerMin:    15.0,
+			VideoRatePerMin:    25.0,
+			GroupRatePerMin:    7.0,
+			ChatRatePerMsg:     2.0,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-30 * 24 * time.Hour),
 		},
 		{
-			ID:              "model-3",
-			Phone:           "9876543212",
-			Name:            "Pooja Verma",
-			Role:            domain.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Friendly listener & anime enthusiast. Always here to cheer you up!",
-			VoiceRatePerMin: 20.0,
-			GroupRatePerMin: 8.0,
-			ChatRatePerMsg:  2.5,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
+			ID:                 "model-3",
+			Phone:              "9876543212",
+			Name:               "Pooja Verma",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Friendly listener & anime enthusiast. Always here to cheer you up!",
+			Age:                21,
+			Gender:             "female",
+			City:               "Bangalore",
+			State:              "Karnataka",
+			Country:            "India",
+			Latitude:           12.9716,
+			Longitude:          77.5946,
+			Rating:             4.92,
+			ReviewCount:        88,
+			TotalCallsCount:    190,
+			TotalMinutesSpoken: 1300,
+			VoiceRatePerMin:    20.0,
+			VideoRatePerMin:    35.0,
+			GroupRatePerMin:    8.0,
+			ChatRatePerMsg:     2.5,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-10 * 24 * time.Hour),
+		},
+		{
+			ID:                 "model-4",
+			Phone:              "9876543213",
+			Name:               "Kavya Patel",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Tech nerd & astrologer. Get your birth chart read with me 🔮",
+			Age:                23,
+			Gender:             "female",
+			City:               "Ahmedabad",
+			State:              "Gujarat",
+			Country:            "India",
+			Latitude:           23.0225,
+			Longitude:          72.5714,
+			Rating:             4.85,
+			ReviewCount:        64,
+			TotalCallsCount:    140,
+			TotalMinutesSpoken: 950,
+			VoiceRatePerMin:    12.0,
+			VideoRatePerMin:    22.0,
+			GroupRatePerMin:    6.0,
+			ChatRatePerMsg:     1.5,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-2 * 24 * time.Hour), // Brand New
 		},
 	}
 
@@ -136,6 +201,29 @@ func (d *memoryData) seedDefaultModels() {
 			TotalSpent:  0,
 			TotalEarned: 0,
 			UpdatedAt:   time.Now(),
+		}
+		d.profiles[mod.ID] = &domain.ModelProfile{
+			ID:              "prof_" + mod.ID,
+			UserID:          mod.ID,
+			DisplayName:     mod.Name,
+			Bio:             mod.Bio,
+			AvatarURL:       mod.AvatarURL,
+			Age:             mod.Age,
+			Gender:          mod.Gender,
+			City:            mod.City,
+			State:           mod.State,
+			Country:         mod.Country,
+			Latitude:        mod.Latitude,
+			Longitude:       mod.Longitude,
+			Languages:       "English, Hindi",
+			Interests:       "Conversations, Music, Life",
+			VoiceRatePerMin: mod.VoiceRatePerMin,
+			VideoRatePerMin: mod.VideoRatePerMin,
+			GroupRatePerMin: mod.GroupRatePerMin,
+			ChatRatePerMsg:  mod.ChatRatePerMsg,
+			Status:          domain.OnboardingStatusApproved,
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
 		}
 	}
 }
@@ -156,6 +244,18 @@ func (d *memoryData) startEphemeralCleaner() {
 		}
 		d.mu.Unlock()
 	}
+}
+
+func haversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	rad := math.Pi / 180.0
+	dlat := (lat2 - lat1) * rad
+	dlon := (lon2 - lon1) * rad
+
+	a := math.Sin(dlat/2)*math.Sin(dlat/2) +
+		math.Cos(lat1*rad)*math.Cos(lat2*rad)*
+			math.Sin(dlon/2)*math.Sin(dlon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return 6371 * c
 }
 
 // ----------------- USER REPOSITORY -----------------
@@ -192,19 +292,31 @@ func (r *memUserRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*
 
 	token := fmt.Sprintf("token_%s_%s", id, uuid.New().String()[:8])
 	newUser := &domain.User{
-		ID:              id,
-		Phone:           phone,
-		Name:            name,
-		Role:            role,
-		AvatarURL:       avatar,
-		Bio:             "Hey there! Connecting on Connect.",
-		VoiceRatePerMin: 12.0,
-		GroupRatePerMin: 6.0,
-		ChatRatePerMsg:  1.5,
-		IsOnline:        true,
-		IsBusy:          false,
-		ActiveToken:     token,
-		CreatedAt:       time.Now(),
+		ID:                 id,
+		Phone:              phone,
+		Name:               name,
+		Role:               role,
+		AvatarURL:          avatar,
+		Bio:                "Hey there! Connecting on Connect.",
+		Age:                21,
+		Gender:             "female",
+		City:               "New Delhi",
+		State:              "Delhi",
+		Country:            "India",
+		Latitude:           28.6139,
+		Longitude:          77.2090,
+		Rating:             4.90,
+		ReviewCount:        0,
+		TotalCallsCount:    0,
+		TotalMinutesSpoken: 0,
+		VoiceRatePerMin:    12.0,
+		VideoRatePerMin:    20.0,
+		GroupRatePerMin:    6.0,
+		ChatRatePerMsg:     1.5,
+		IsOnline:           true,
+		IsBusy:             false,
+		ActiveToken:        token,
+		CreatedAt:          time.Now(),
 	}
 	r.data.users[id] = newUser
 	r.data.tokens[token] = id
@@ -274,6 +386,271 @@ func (r *memUserRepo) ListModels() ([]*domain.User, error) {
 		}
 	}
 	return list, nil
+}
+
+func (r *memUserRepo) ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error) {
+	r.data.mu.RLock()
+	defer r.data.mu.RUnlock()
+
+	var matched []*domain.ModelItem
+	hasGeo := filter.Latitude != 0 && filter.Longitude != 0
+
+	for _, u := range r.data.users {
+		if u.Role != domain.RoleModel {
+			continue
+		}
+
+		prof := r.data.profiles[u.ID]
+
+		// Filters
+		if filter.IsOnline != nil && *filter.IsOnline && !u.IsOnline {
+			continue
+		}
+		if filter.MinAge > 0 && u.Age < filter.MinAge {
+			continue
+		}
+		if filter.MaxAge > 0 && u.Age > filter.MaxAge {
+			continue
+		}
+		if filter.Gender != "" && filter.Gender != "all" && !strings.EqualFold(u.Gender, filter.Gender) {
+			continue
+		}
+		if filter.City != "" && !strings.Contains(strings.ToLower(u.City), strings.ToLower(filter.City)) {
+			continue
+		}
+		if filter.MinRate > 0 && u.VoiceRatePerMin < filter.MinRate {
+			continue
+		}
+		if filter.MaxRate > 0 && u.VoiceRatePerMin > filter.MaxRate {
+			continue
+		}
+
+		it := &domain.ModelItem{
+			User:            *u,
+			DisplayName:     u.Name,
+			Languages:       []string{"English", "Hindi"},
+			Interests:       []string{"Conversations", "Music"},
+			ProfileVerified: true,
+		}
+
+		if prof != nil {
+			if prof.DisplayName != "" {
+				it.DisplayName = prof.DisplayName
+			}
+			if prof.AudioIntroURL != "" {
+				it.AudioIntroURL = prof.AudioIntroURL
+			}
+			if len(prof.GalleryURLs) > 0 {
+				it.GalleryURLs = prof.GalleryURLs
+			}
+			if prof.Languages != "" {
+				it.Languages = nil
+				for _, part := range strings.Split(prof.Languages, ",") {
+					if p := strings.TrimSpace(part); p != "" {
+						it.Languages = append(it.Languages, p)
+					}
+				}
+			}
+			if prof.Interests != "" {
+				it.Interests = nil
+				for _, part := range strings.Split(prof.Interests, ",") {
+					if p := strings.TrimSpace(part); p != "" {
+						it.Interests = append(it.Interests, p)
+					}
+				}
+			}
+		}
+
+		// Language filter
+		if filter.Language != "" {
+			langMatch := false
+			for _, l := range it.Languages {
+				if strings.Contains(strings.ToLower(l), strings.ToLower(filter.Language)) {
+					langMatch = true
+					break
+				}
+			}
+			if !langMatch {
+				continue
+			}
+		}
+
+		// Interest filter
+		if filter.Interest != "" {
+			intMatch := false
+			for _, in := range it.Interests {
+				if strings.Contains(strings.ToLower(in), strings.ToLower(filter.Interest)) {
+					intMatch = true
+					break
+				}
+			}
+			if !intMatch {
+				continue
+			}
+		}
+
+		// Calculate Distance
+		if hasGeo && u.Latitude != 0 && u.Longitude != 0 {
+			dist := haversineDistance(filter.Latitude, filter.Longitude, u.Latitude, u.Longitude)
+			it.DistanceKM = &dist
+		}
+
+		// Badges
+		if time.Since(u.CreatedAt) < 14*24*time.Hour {
+			it.IsNew = true
+			it.Badges = append(it.Badges, "New Creator")
+		}
+		if u.Rating >= 4.90 {
+			it.Badges = append(it.Badges, "Top Rated")
+		}
+		if u.TotalCallsCount >= 100 {
+			it.Badges = append(it.Badges, "Popular")
+		}
+		it.Badges = append(it.Badges, "Verified")
+		if it.DistanceKM != nil && *it.DistanceKM <= 25.0 {
+			it.Badges = append(it.Badges, "Nearby")
+		}
+
+		matched = append(matched, it)
+	}
+
+	// Sorting
+	switch filter.Filter {
+	case "nearby":
+		sort.Slice(matched, func(i, j int) bool {
+			if matched[i].DistanceKM == nil {
+				return false
+			}
+			if matched[j].DistanceKM == nil {
+				return true
+			}
+			return *matched[i].DistanceKM < *matched[j].DistanceKM
+		})
+	case "new":
+		sort.Slice(matched, func(i, j int) bool {
+			return matched[i].CreatedAt.After(matched[j].CreatedAt)
+		})
+	case "top":
+		sort.Slice(matched, func(i, j int) bool {
+			if matched[i].Rating != matched[j].Rating {
+				return matched[i].Rating > matched[j].Rating
+			}
+			return matched[i].TotalCallsCount > matched[j].TotalCallsCount
+		})
+	default:
+		switch filter.SortBy {
+		case "distance":
+			sort.Slice(matched, func(i, j int) bool {
+				if matched[i].DistanceKM == nil {
+					return false
+				}
+				if matched[j].DistanceKM == nil {
+					return true
+				}
+				return *matched[i].DistanceKM < *matched[j].DistanceKM
+			})
+		case "rating":
+			sort.Slice(matched, func(i, j int) bool {
+				return matched[i].Rating > matched[j].Rating
+			})
+		case "newest":
+			sort.Slice(matched, func(i, j int) bool {
+				return matched[i].CreatedAt.After(matched[j].CreatedAt)
+			})
+		case "calls", "popularity":
+			sort.Slice(matched, func(i, j int) bool {
+				return matched[i].TotalCallsCount > matched[j].TotalCallsCount
+			})
+		case "price_low":
+			sort.Slice(matched, func(i, j int) bool {
+				return matched[i].VoiceRatePerMin < matched[j].VoiceRatePerMin
+			})
+		case "price_high":
+			sort.Slice(matched, func(i, j int) bool {
+				return matched[i].VoiceRatePerMin > matched[j].VoiceRatePerMin
+			})
+		default:
+			sort.Slice(matched, func(i, j int) bool {
+				if matched[i].IsOnline != matched[j].IsOnline {
+					return matched[i].IsOnline
+				}
+				return matched[i].Rating > matched[j].Rating
+			})
+		}
+	}
+
+	totalCount := len(matched)
+	page := filter.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	start := (page - 1) * limit
+	if start >= totalCount {
+		return []*domain.ModelItem{}, totalCount, nil
+	}
+	end := start + limit
+	if end > totalCount {
+		end = totalCount
+	}
+
+	return matched[start:end], totalCount, nil
+}
+
+func (r *memUserRepo) UpdateUserOnboarding(userID string, p *domain.ModelProfile) error {
+	r.data.mu.Lock()
+	defer r.data.mu.Unlock()
+
+	u, ok := r.data.users[userID]
+	if !ok {
+		return errors.New("user not found")
+	}
+	if p.DisplayName != "" {
+		u.Name = p.DisplayName
+	}
+	if p.Bio != "" {
+		u.Bio = p.Bio
+	}
+	if p.AvatarURL != "" {
+		u.AvatarURL = p.AvatarURL
+	}
+	if p.Age > 0 {
+		u.Age = p.Age
+	}
+	if p.Gender != "" {
+		u.Gender = p.Gender
+	}
+	if p.City != "" {
+		u.City = p.City
+	}
+	if p.State != "" {
+		u.State = p.State
+	}
+	if p.Country != "" {
+		u.Country = p.Country
+	}
+	if p.Latitude != 0 {
+		u.Latitude = p.Latitude
+	}
+	if p.Longitude != 0 {
+		u.Longitude = p.Longitude
+	}
+	if p.VoiceRatePerMin > 0 {
+		u.VoiceRatePerMin = p.VoiceRatePerMin
+	}
+	if p.VideoRatePerMin > 0 {
+		u.VideoRatePerMin = p.VideoRatePerMin
+	}
+	if p.GroupRatePerMin > 0 {
+		u.GroupRatePerMin = p.GroupRatePerMin
+	}
+	if p.ChatRatePerMsg > 0 {
+		u.ChatRatePerMsg = p.ChatRatePerMsg
+	}
+	return nil
 }
 
 func (r *memUserRepo) SetPresence(id string, isOnline, isBusy bool) error {

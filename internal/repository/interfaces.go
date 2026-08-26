@@ -9,7 +9,9 @@ type UserRepository interface {
 	GetByToken(token string) (*domain.User, error)
 	GetByID(id string) (*domain.User, error)
 	ListModels() ([]*domain.User, error)
+	ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error)
 	SetPresence(id string, isOnline, isBusy bool) error
+	UpdateUserOnboarding(userID string, p *domain.ModelProfile) error
 }
 
 type WalletRepository interface {

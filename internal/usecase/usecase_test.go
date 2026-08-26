@@ -158,3 +158,92 @@ func TestFavoriteUseCase(t *testing.T) {
 	}
 }
 
+func TestModelDiscoveryFilteringNearbyAndPagination(t *testing.T) {
+	store := memory.NewMemoryStore()
+	m := mapper.NewMapper()
+	authUC := usecase.NewAuthUseCase(store.Users, store.Wallets, m)
+
+	// 1. Test Nearby Discovery (Delhi coordinates: 28.6139, 77.2090)
+	nearbyResp, err := authUC.ListModelsAdvanced(&dto.ModelFilterQuery{
+		Filter: "nearby",
+		Lat:    28.6139,
+		Lng:    77.2090,
+		Page:   1,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("ListModelsAdvanced nearby failed: %v", err)
+	}
+	if nearbyResp.Count == 0 {
+		t.Fatalf("Expected nearby models, got 0")
+	}
+	if nearbyResp.Models[0].DistanceKM == nil {
+		t.Fatalf("Expected DistanceKM to be computed for nearby search")
+	}
+	if *nearbyResp.Models[0].DistanceKM > 1.0 {
+		t.Fatalf("Expected Delhi model (Aanya) to be closest (~0 km), got %.2f km", *nearbyResp.Models[0].DistanceKM)
+	}
+
+	// 2. Test Age Filter (e.g. MinAge 23)
+	ageResp, err := authUC.ListModelsAdvanced(&dto.ModelFilterQuery{
+		Filter: "all",
+		MinAge: 23,
+		MaxAge: 30,
+		Page:   1,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("ListModelsAdvanced age filter failed: %v", err)
+	}
+	for _, mod := range ageResp.Models {
+		if mod.Age < 23 || mod.Age > 30 {
+			t.Fatalf("Expected model age between 23 and 30, got %d for %s", mod.Age, mod.Name)
+		}
+	}
+
+	// 3. Test New Models Filter
+	newResp, err := authUC.ListModelsAdvanced(&dto.ModelFilterQuery{
+		Filter: "new",
+		Page:   1,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("ListModelsAdvanced new filter failed: %v", err)
+	}
+	if newResp.Count == 0 {
+		t.Fatalf("Expected new models list, got 0")
+	}
+
+	// 4. Test Top Models Filter
+	topResp, err := authUC.ListModelsAdvanced(&dto.ModelFilterQuery{
+		Filter: "top",
+		Page:   1,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("ListModelsAdvanced top filter failed: %v", err)
+	}
+	if topResp.Count == 0 || topResp.Models[0].Rating < 4.8 {
+		t.Fatalf("Expected top models with high rating")
+	}
+
+	// 5. Test Pagination (Page 1 vs Page 2 with limit 2)
+	p1Resp, _ := authUC.ListModelsAdvanced(&dto.ModelFilterQuery{
+		Page:  1,
+		Limit: 2,
+	})
+	p2Resp, _ := authUC.ListModelsAdvanced(&dto.ModelFilterQuery{
+		Page:  2,
+		Limit: 2,
+	})
+	if len(p1Resp.Models) != 2 || len(p2Resp.Models) != 2 {
+		t.Fatalf("Expected 2 models per page, got P1=%d, P2=%d", len(p1Resp.Models), len(p2Resp.Models))
+	}
+	if p1Resp.Models[0].ID == p2Resp.Models[0].ID {
+		t.Fatalf("Page 1 and Page 2 should not have identical models: P1[0]=%s, P2[0]=%s", p1Resp.Models[0].ID, p2Resp.Models[0].ID)
+	}
+	if !p1Resp.Pagination.HasNext {
+		t.Fatalf("Expected Page 1 to have HasNext=true")
+	}
+}
+

@@ -27,9 +27,187 @@ func (m *Mapper) ToAuthResponse(user *domain.User, token string, isNew bool, wal
 }
 
 func (m *Mapper) ToModelListResponse(models []*domain.User) *dto.ModelListResponse {
+	var cards []*dto.ModelCardDTO
+	for _, u := range models {
+		age := u.Age
+		if age == 0 {
+			age = 21
+		}
+		rating := u.Rating
+		if rating == 0 {
+			rating = 4.90
+		}
+		videoRate := u.VideoRatePerMin
+		if videoRate == 0 {
+			videoRate = 20.0
+		}
+		cards = append(cards, &dto.ModelCardDTO{
+			ID:                 u.ID,
+			Name:               u.Name,
+			DisplayName:        u.Name,
+			Role:               string(u.Role),
+			AvatarURL:          u.AvatarURL,
+			Bio:                u.Bio,
+			Age:                age,
+			Gender:             u.Gender,
+			City:               u.City,
+			State:              u.State,
+			Country:            u.Country,
+			Latitude:           u.Latitude,
+			Longitude:          u.Longitude,
+			Languages:          []string{"English", "Hindi"},
+			Interests:          []string{"Conversations", "Music"},
+			VoiceRatePerMin:    u.VoiceRatePerMin,
+			VideoRatePerMin:    videoRate,
+			GroupRatePerMin:    u.GroupRatePerMin,
+			ChatRatePerMsg:     u.ChatRatePerMsg,
+			IsOnline:           u.IsOnline,
+			IsBusy:             u.IsBusy,
+			Rating:             rating,
+			ReviewCount:        u.ReviewCount,
+			TotalCallsCount:    u.TotalCallsCount,
+			TotalMinutesSpoken: u.TotalMinutesSpoken,
+			Badges:             []string{"Verified"},
+			CreatedAt:          u.CreatedAt,
+		})
+	}
 	return &dto.ModelListResponse{
-		Count:  len(models),
-		Models: models,
+		Count: len(cards),
+		Pagination: dto.PaginationMeta{
+			CurrentPage: 1,
+			Limit:       len(cards),
+			TotalCount:  len(cards),
+			TotalPages:  1,
+			HasNext:     false,
+			HasPrev:     false,
+		},
+		FiltersApplied: map[string]interface{}{"filter": "all"},
+		Models:         cards,
+	}
+}
+
+func (m *Mapper) ToPaginatedModelListResponse(items []*domain.ModelItem, totalCount int, filter *dto.ModelFilterQuery) *dto.ModelListResponse {
+	var cards []*dto.ModelCardDTO
+	for _, it := range items {
+		age := it.Age
+		if age == 0 {
+			age = 21
+		}
+		rating := it.Rating
+		if rating == 0 {
+			rating = 4.90
+		}
+		videoRate := it.VideoRatePerMin
+		if videoRate == 0 {
+			videoRate = 20.0
+		}
+		displayName := it.DisplayName
+		if displayName == "" {
+			displayName = it.Name
+		}
+		langs := it.Languages
+		if len(langs) == 0 {
+			langs = []string{"English", "Hindi"}
+		}
+		interests := it.Interests
+		if len(interests) == 0 {
+			interests = []string{"Conversations", "Music"}
+		}
+
+		card := &dto.ModelCardDTO{
+			ID:                 it.ID,
+			Name:               it.Name,
+			DisplayName:        displayName,
+			Role:               string(it.Role),
+			AvatarURL:          it.AvatarURL,
+			GalleryURLs:        it.GalleryURLs,
+			Bio:                it.Bio,
+			Age:                age,
+			Gender:             it.Gender,
+			City:               it.City,
+			State:              it.State,
+			Country:            it.Country,
+			Latitude:           it.Latitude,
+			Longitude:          it.Longitude,
+			DistanceKM:         it.DistanceKM,
+			Languages:          langs,
+			Interests:          interests,
+			VoiceRatePerMin:    it.VoiceRatePerMin,
+			VideoRatePerMin:    videoRate,
+			GroupRatePerMin:    it.GroupRatePerMin,
+			ChatRatePerMsg:     it.ChatRatePerMsg,
+			IsOnline:           it.IsOnline,
+			IsBusy:             it.IsBusy,
+			Rating:             rating,
+			ReviewCount:        it.ReviewCount,
+			TotalCallsCount:    it.TotalCallsCount,
+			TotalMinutesSpoken: it.TotalMinutesSpoken,
+			Badges:             it.Badges,
+			IsNew:              it.IsNew,
+			AudioIntroURL:      it.AudioIntroURL,
+			CreatedAt:          it.CreatedAt,
+		}
+		cards = append(cards, card)
+	}
+
+	page := filter.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	totalPages := (totalCount + limit - 1) / limit
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	filterName := filter.Filter
+	if filterName == "" {
+		filterName = "all"
+	}
+
+	filtersApplied := map[string]interface{}{
+		"filter": filterName,
+		"page":   page,
+		"limit":  limit,
+	}
+	if filter.Lat != 0 && filter.Lng != 0 {
+		filtersApplied["lat"] = filter.Lat
+		filtersApplied["lng"] = filter.Lng
+		if filter.MaxDistanceKM > 0 {
+			filtersApplied["max_distance_km"] = filter.MaxDistanceKM
+		}
+	}
+	if filter.City != "" {
+		filtersApplied["city"] = filter.City
+	}
+	if filter.Gender != "" {
+		filtersApplied["gender"] = filter.Gender
+	}
+	if filter.MinAge > 0 {
+		filtersApplied["min_age"] = filter.MinAge
+	}
+	if filter.MaxAge > 0 {
+		filtersApplied["max_age"] = filter.MaxAge
+	}
+	if filter.SortBy != "" {
+		filtersApplied["sort_by"] = filter.SortBy
+	}
+
+	return &dto.ModelListResponse{
+		Count: len(cards),
+		Pagination: dto.PaginationMeta{
+			CurrentPage: page,
+			Limit:       limit,
+			TotalCount:  totalCount,
+			TotalPages:  totalPages,
+			HasNext:     page < totalPages,
+			HasPrev:     page > 1,
+		},
+		FiltersApplied: filtersApplied,
+		Models:         cards,
 	}
 }
 

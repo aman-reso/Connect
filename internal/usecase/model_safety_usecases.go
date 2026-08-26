@@ -30,13 +30,16 @@ func NewModelOnboardingUseCase(oRepo repository.ModelOnboardingRepository, uRepo
 
 func (uc *ModelOnboardingUseCase) SubmitOnboarding(modelUser *domain.User, req *dto.ModelOnboardingRequest) (*dto.ModelOnboardingResponse, error) {
 	if req.Age < 18 {
-		return nil, errors.New("you must be at least 18 years old to onboard as a model")
+		return nil, errors.New("you must be at least 18 years old to onboard as a model/creator")
 	}
 	if req.DisplayName == "" {
 		req.DisplayName = modelUser.Name
 	}
 	if req.VoiceRatePerMin < 1.0 || req.VoiceRatePerMin > 500.0 {
-		return nil, errors.New("voice call rate must be between ₹5.00 and ₹500.00 per minute")
+		return nil, errors.New("voice call rate must be between ₹1.00 and ₹500.00 per minute")
+	}
+	if req.VideoRatePerMin <= 0 {
+		req.VideoRatePerMin = req.VoiceRatePerMin * 1.5
 	}
 	if req.GroupRatePerMin <= 0 {
 		req.GroupRatePerMin = req.VoiceRatePerMin * 0.5
@@ -49,43 +52,66 @@ func (uc *ModelOnboardingUseCase) SubmitOnboarding(modelUser *domain.User, req *
 	}
 
 	profileID := "prof_" + uuid.New().String()[:10]
+	now := time.Now()
 	profile := &domain.ModelProfile{
-		ID:              profileID,
-		UserID:          modelUser.ID,
-		DisplayName:     req.DisplayName,
-		Bio:             req.Bio,
-		AvatarURL:       req.AvatarURL,
-		Age:             req.Age,
-		Gender:          req.Gender,
-		Languages:       req.Languages,
-		Interests:       req.Interests,
-		VoiceRatePerMin: req.VoiceRatePerMin,
-		GroupRatePerMin: req.GroupRatePerMin,
-		ChatRatePerMsg:  req.ChatRatePerMsg,
-		PayoutUPI:       req.PayoutUPI,
-		PayoutBankAcc:   req.PayoutBankAcc,
-		PayoutIFSC:      req.PayoutIFSC,
-		AudioIntroURL:   req.AudioIntroURL,
-		Status:          domain.OnboardingStatusApproved, // Auto-verified upon valid 18+ & payout info
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		ID:                       profileID,
+		UserID:                   modelUser.ID,
+		FullLegalName:            req.FullLegalName,
+		DisplayName:              req.DisplayName,
+		Bio:                      req.Bio,
+		AvatarURL:                req.AvatarURL,
+		GalleryURLs:              req.GalleryURLs,
+		DateOfBirth:              req.DateOfBirth,
+		Age:                      req.Age,
+		Gender:                   req.Gender,
+		GovtIDType:               req.GovtIDType,
+		GovtIDNumber:             req.GovtIDNumber,
+		GovtIDDocURL:             req.GovtIDDocURL,
+		SelfieVerificationURL:    req.SelfieVerificationURL,
+		City:                     req.City,
+		State:                    req.State,
+		Country:                  req.Country,
+		Pincode:                  req.Pincode,
+		AddressLine:              req.AddressLine,
+		Latitude:                 req.Latitude,
+		Longitude:                req.Longitude,
+		Languages:                req.Languages,
+		Interests:                req.Interests,
+		VoiceRatePerMin:          req.VoiceRatePerMin,
+		VideoRatePerMin:          req.VideoRatePerMin,
+		GroupRatePerMin:          req.GroupRatePerMin,
+		ChatRatePerMsg:           req.ChatRatePerMsg,
+		PayoutMethod:             req.PayoutMethod,
+		PayoutUPI:                req.PayoutUPI,
+		PayoutBankAcc:            req.PayoutBankAcc,
+		PayoutIFSC:               req.PayoutIFSC,
+		PayoutBeneficiaryName:    req.PayoutBeneficiaryName,
+		PANNumber:                req.PANNumber,
+		AudioIntroURL:            req.AudioIntroURL,
+		Status:                   domain.OnboardingStatusApproved, // Auto-verified upon complete dossier submission
+		AgreedToSafetyGuidelines: req.AgreedToSafetyGuidelines,
+		AgreedToTerms:            req.AgreedToTerms,
+		SafetyAcceptedAt:         &now,
+		CreatedAt:                now,
+		UpdatedAt:                now,
 	}
 
 	if err := uc.onboardRepo.SaveProfile(profile); err != nil {
 		return nil, fmt.Errorf("failed to save onboarding profile: %w", err)
 	}
 
-	// Update core user rates & bio
-	modelUser.Name = profile.DisplayName
-	modelUser.Bio = profile.Bio
-	if profile.AvatarURL != "" {
-		modelUser.AvatarURL = profile.AvatarURL
-	}
-	modelUser.VoiceRatePerMin = profile.VoiceRatePerMin
-	modelUser.GroupRatePerMin = profile.GroupRatePerMin
-	modelUser.ChatRatePerMsg = profile.ChatRatePerMsg
+	// Synchronize user entity in users table
+	_ = uc.userRepo.UpdateUserOnboarding(modelUser.ID, profile)
 
-	return uc.mapper.ToModelOnboardingResponse(profile, "Model onboarding completed successfully! Your profile is active."), nil
+	return uc.mapper.ToModelOnboardingResponse(profile, "Model onboarding dossier verified and saved successfully! Your profile is active."), nil
+}
+
+func (uc *ModelOnboardingUseCase) GetMyOnboardingStatus(userID string) (*dto.ModelOnboardingResponse, error) {
+	profile, err := uc.onboardRepo.GetProfileByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	return uc.mapper.ToModelOnboardingResponse(profile, "Active creator profile fetched"), nil
 }
 
 func (uc *ModelOnboardingUseCase) GetOnboardingStatus(userID string) (*dto.ModelOnboardingResponse, error) {

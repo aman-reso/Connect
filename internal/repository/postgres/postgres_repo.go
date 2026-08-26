@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"Connect/internal/domain"
@@ -252,6 +253,42 @@ func (s *PostgresStore) initSchema() error {
 
 	CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id);
 	CREATE INDEX IF NOT EXISTS idx_user_favorites_model ON user_favorites(model_id);
+
+	-- Schema Migrations for advanced discovery, location & full onboarding
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS age INT DEFAULT 21;
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20) DEFAULT 'female';
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 6);
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 6);
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS rating NUMERIC(3, 2) NOT NULL DEFAULT 4.90;
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS review_count INT NOT NULL DEFAULT 0;
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS total_calls_count INT NOT NULL DEFAULT 0;
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS total_minutes_spoken INT NOT NULL DEFAULT 0;
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS video_rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 20.00;
+
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS full_legal_name VARCHAR(150);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS gallery_urls TEXT;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(30);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS govt_id_type VARCHAR(50);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS govt_id_number VARCHAR(100);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS govt_id_doc_url TEXT;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS selfie_verification_url TEXT;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS address_line TEXT;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 6);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 6);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS video_rate_per_min NUMERIC(10, 2) NOT NULL DEFAULT 20.00;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS payout_method VARCHAR(30) DEFAULT 'upi';
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS payout_beneficiary_name VARCHAR(150);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS pan_number VARCHAR(20);
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS agreed_to_safety_guidelines BOOLEAN NOT NULL DEFAULT TRUE;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS agreed_to_terms BOOLEAN NOT NULL DEFAULT TRUE;
+	ALTER TABLE model_profiles ADD COLUMN IF NOT EXISTS safety_accepted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 	`
 	_, err := s.db.Exec(schema)
 	return err
@@ -260,62 +297,139 @@ func (s *PostgresStore) initSchema() error {
 func (s *PostgresStore) seedDefaultModels() {
 	seedModels := []*domain.User{
 		{
-			ID:              "model-1",
-			Phone:           "9876543210",
-			Name:            "Aanya Sharma",
-			Role:            domain.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Love deep late-night conversations, music & psychology 🌙",
-			VoiceRatePerMin: 10.0,
-			GroupRatePerMin: 5.0,
-			ChatRatePerMsg:  1.0,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
+			ID:                 "model-1",
+			Phone:              "9876543210",
+			Name:               "Aanya Sharma",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Love deep late-night conversations, music & psychology 🌙",
+			Age:                22,
+			Gender:             "female",
+			City:               "New Delhi",
+			State:              "Delhi",
+			Country:            "India",
+			Latitude:           28.6139,
+			Longitude:          77.2090,
+			Rating:             4.95,
+			ReviewCount:        142,
+			TotalCallsCount:    380,
+			TotalMinutesSpoken: 2600,
+			VoiceRatePerMin:    10.0,
+			VideoRatePerMin:    20.0,
+			GroupRatePerMin:    5.0,
+			ChatRatePerMsg:     1.0,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-15 * 24 * time.Hour),
 		},
 		{
-			ID:              "model-2",
-			Phone:           "9876543211",
-			Name:            "Riya Sen",
-			Role:            domain.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Artist & traveler. Let's talk about dreams & coffee ☕✨",
-			VoiceRatePerMin: 15.0,
-			GroupRatePerMin: 7.0,
-			ChatRatePerMsg:  2.0,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
+			ID:                 "model-2",
+			Phone:              "9876543211",
+			Name:               "Riya Sen",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Artist & traveler. Let's talk about dreams & coffee ☕✨",
+			Age:                24,
+			Gender:             "female",
+			City:               "Mumbai",
+			State:              "Maharashtra",
+			Country:            "India",
+			Latitude:           19.0760,
+			Longitude:          72.8777,
+			Rating:             4.88,
+			ReviewCount:        96,
+			TotalCallsCount:    210,
+			TotalMinutesSpoken: 1450,
+			VoiceRatePerMin:    15.0,
+			VideoRatePerMin:    25.0,
+			GroupRatePerMin:    7.0,
+			ChatRatePerMsg:     2.0,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-30 * 24 * time.Hour),
 		},
 		{
-			ID:              "model-3",
-			Phone:           "9876543212",
-			Name:            "Pooja Verma",
-			Role:            domain.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Friendly listener & anime enthusiast. Always here to cheer you up!",
-			VoiceRatePerMin: 20.0,
-			GroupRatePerMin: 8.0,
-			ChatRatePerMsg:  2.5,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
+			ID:                 "model-3",
+			Phone:              "9876543212",
+			Name:               "Pooja Verma",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Friendly listener & anime enthusiast. Always here to cheer you up!",
+			Age:                21,
+			Gender:             "female",
+			City:               "Bangalore",
+			State:              "Karnataka",
+			Country:            "India",
+			Latitude:           12.9716,
+			Longitude:          77.5946,
+			Rating:             4.92,
+			ReviewCount:        88,
+			TotalCallsCount:    190,
+			TotalMinutesSpoken: 1300,
+			VoiceRatePerMin:    20.0,
+			VideoRatePerMin:    35.0,
+			GroupRatePerMin:    8.0,
+			ChatRatePerMsg:     2.5,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-10 * 24 * time.Hour),
+		},
+		{
+			ID:                 "model-4",
+			Phone:              "9876543213",
+			Name:               "Kavya Patel",
+			Role:               domain.RoleModel,
+			AvatarURL:          "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&auto=format&fit=crop&q=80",
+			Bio:                "Tech nerd & astrologer. Get your birth chart read with me 🔮",
+			Age:                23,
+			Gender:             "female",
+			City:               "Ahmedabad",
+			State:              "Gujarat",
+			Country:            "India",
+			Latitude:           23.0225,
+			Longitude:          72.5714,
+			Rating:             4.85,
+			ReviewCount:        64,
+			TotalCallsCount:    140,
+			TotalMinutesSpoken: 950,
+			VoiceRatePerMin:    12.0,
+			VideoRatePerMin:    22.0,
+			GroupRatePerMin:    6.0,
+			ChatRatePerMsg:     1.5,
+			IsOnline:           true,
+			IsBusy:             false,
+			CreatedAt:          time.Now().Add(-2 * 24 * time.Hour), // Brand New
 		},
 	}
 
 	for _, m := range seedModels {
 		token := fmt.Sprintf("token_%s_seed", m.ID)
 		_, _ = s.db.Exec(`
-			INSERT INTO users (id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			ON CONFLICT (phone) DO UPDATE SET active_token = EXCLUDED.active_token
-		`, m.ID, m.Phone, m.Name, m.Role, m.AvatarURL, m.Bio, m.VoiceRatePerMin, m.GroupRatePerMin, m.ChatRatePerMsg, true, false, token)
+			INSERT INTO users (id, phone, name, role, avatar_url, bio, age, gender, city, state, country, latitude, longitude, rating, review_count, total_calls_count, total_minutes_spoken, voice_rate_per_min, video_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+			ON CONFLICT (phone) DO UPDATE SET 
+				active_token = EXCLUDED.active_token, age = EXCLUDED.age, city = EXCLUDED.city, state = EXCLUDED.state,
+				latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, rating = EXCLUDED.rating,
+				voice_rate_per_min = EXCLUDED.voice_rate_per_min, video_rate_per_min = EXCLUDED.video_rate_per_min
+		`, m.ID, m.Phone, m.Name, m.Role, m.AvatarURL, m.Bio, m.Age, m.Gender, m.City, m.State, m.Country,
+			m.Latitude, m.Longitude, m.Rating, m.ReviewCount, m.TotalCallsCount, m.TotalMinutesSpoken,
+			m.VoiceRatePerMin, m.VideoRatePerMin, m.GroupRatePerMin, m.ChatRatePerMsg, true, false, token)
 
 		_, _ = s.db.Exec(`
 			INSERT INTO wallets (user_id, balance, bonus_given, total_spent, total_earned)
 			VALUES ($1, 0, 0, 0, 0)
 			ON CONFLICT (user_id) DO NOTHING
 		`, m.ID)
+
+		_, _ = s.db.Exec(`
+			INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, city, state, country, latitude, longitude, languages, interests, voice_rate_per_min, video_rate_per_min, group_rate_per_min, chat_rate_per_msg, status, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'approved', NOW(), NOW())
+			ON CONFLICT (user_id) DO UPDATE SET 
+				age = EXCLUDED.age, city = EXCLUDED.city, state = EXCLUDED.state, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
+				voice_rate_per_min = EXCLUDED.voice_rate_per_min, video_rate_per_min = EXCLUDED.video_rate_per_min, status = 'approved'
+		`, "prof_"+m.ID, m.ID, m.Name, m.Bio, m.AvatarURL, m.Age, m.Gender, m.City, m.State, m.Country,
+			m.Latitude, m.Longitude, "English, Hindi", "Conversations, Music, Life",
+			m.VoiceRatePerMin, m.VideoRatePerMin, m.GroupRatePerMin, m.ChatRatePerMsg)
 	}
 }
 
@@ -420,11 +534,13 @@ func (r *userRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*dom
 func (r *userRepo) GetByToken(token string) (*domain.User, error) {
 	var user domain.User
 	err := r.db.QueryRow(`
-		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at
+		SELECT id, phone, name, role, avatar_url, bio, COALESCE(age, 21), COALESCE(gender, 'female'), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, 'India'), COALESCE(latitude, 0), COALESCE(longitude, 0), COALESCE(rating, 4.90), COALESCE(review_count, 0), COALESCE(total_calls_count, 0), COALESCE(total_minutes_spoken, 0), voice_rate_per_min, COALESCE(video_rate_per_min, 20.0), group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at
 		FROM users WHERE active_token = $1
 	`, token).Scan(
 		&user.ID, &user.Phone, &user.Name, &user.Role, &user.AvatarURL, &user.Bio,
-		&user.VoiceRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.ActiveToken, &user.CreatedAt,
+		&user.Age, &user.Gender, &user.City, &user.State, &user.Country, &user.Latitude, &user.Longitude,
+		&user.Rating, &user.ReviewCount, &user.TotalCallsCount, &user.TotalMinutesSpoken,
+		&user.VoiceRatePerMin, &user.VideoRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.ActiveToken, &user.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token or session logged in on another device")
@@ -435,11 +551,13 @@ func (r *userRepo) GetByToken(token string) (*domain.User, error) {
 func (r *userRepo) GetByID(id string) (*domain.User, error) {
 	var user domain.User
 	err := r.db.QueryRow(`
-		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at
+		SELECT id, phone, name, role, avatar_url, bio, COALESCE(age, 21), COALESCE(gender, 'female'), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, 'India'), COALESCE(latitude, 0), COALESCE(longitude, 0), COALESCE(rating, 4.90), COALESCE(review_count, 0), COALESCE(total_calls_count, 0), COALESCE(total_minutes_spoken, 0), voice_rate_per_min, COALESCE(video_rate_per_min, 20.0), group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token, created_at
 		FROM users WHERE id = $1
 	`, id).Scan(
 		&user.ID, &user.Phone, &user.Name, &user.Role, &user.AvatarURL, &user.Bio,
-		&user.VoiceRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.ActiveToken, &user.CreatedAt,
+		&user.Age, &user.Gender, &user.City, &user.State, &user.Country, &user.Latitude, &user.Longitude,
+		&user.Rating, &user.ReviewCount, &user.TotalCallsCount, &user.TotalMinutesSpoken,
+		&user.VoiceRatePerMin, &user.VideoRatePerMin, &user.GroupRatePerMin, &user.ChatRatePerMsg, &user.IsOnline, &user.IsBusy, &user.ActiveToken, &user.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("user not found")
@@ -449,8 +567,8 @@ func (r *userRepo) GetByID(id string) (*domain.User, error) {
 
 func (r *userRepo) ListModels() ([]*domain.User, error) {
 	rows, err := r.db.Query(`
-		SELECT id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, created_at
-		FROM users WHERE role = 'model' ORDER BY is_online DESC, name ASC
+		SELECT id, phone, name, role, avatar_url, bio, COALESCE(age, 21), COALESCE(gender, 'female'), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, 'India'), COALESCE(latitude, 0), COALESCE(longitude, 0), COALESCE(rating, 4.90), COALESCE(review_count, 0), COALESCE(total_calls_count, 0), COALESCE(total_minutes_spoken, 0), voice_rate_per_min, COALESCE(video_rate_per_min, 20.0), group_rate_per_min, chat_rate_per_msg, is_online, is_busy, created_at
+		FROM users WHERE role = 'model' ORDER BY is_online DESC, rating DESC, name ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -462,12 +580,263 @@ func (r *userRepo) ListModels() ([]*domain.User, error) {
 		var u domain.User
 		if err := rows.Scan(
 			&u.ID, &u.Phone, &u.Name, &u.Role, &u.AvatarURL, &u.Bio,
-			&u.VoiceRatePerMin, &u.GroupRatePerMin, &u.ChatRatePerMsg, &u.IsOnline, &u.IsBusy, &u.CreatedAt,
+			&u.Age, &u.Gender, &u.City, &u.State, &u.Country, &u.Latitude, &u.Longitude,
+			&u.Rating, &u.ReviewCount, &u.TotalCallsCount, &u.TotalMinutesSpoken,
+			&u.VoiceRatePerMin, &u.VideoRatePerMin, &u.GroupRatePerMin, &u.ChatRatePerMsg, &u.IsOnline, &u.IsBusy, &u.CreatedAt,
 		); err == nil {
 			list = append(list, &u)
 		}
 	}
 	return list, nil
+}
+
+func (r *userRepo) ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error) {
+	if filter.Page <= 0 {
+		filter.Page = 1
+	}
+	if filter.Limit <= 0 || filter.Limit > 100 {
+		filter.Limit = 20
+	}
+	offset := (filter.Page - 1) * filter.Limit
+
+	var query strings.Builder
+	var args []interface{}
+	argIdx := 1
+
+	hasGeo := filter.Latitude != 0 && filter.Longitude != 0
+
+	query.WriteString(`
+		SELECT 
+			u.id, u.phone, u.name, u.role, u.avatar_url, u.bio, 
+			COALESCE(u.age, 21), COALESCE(u.gender, 'female'), COALESCE(u.city, ''), COALESCE(u.state, ''), COALESCE(u.country, 'India'),
+			COALESCE(u.latitude, 0), COALESCE(u.longitude, 0),
+			COALESCE(u.rating, 4.90), COALESCE(u.review_count, 0), COALESCE(u.total_calls_count, 0), COALESCE(u.total_minutes_spoken, 0),
+			u.voice_rate_per_min, COALESCE(u.video_rate_per_min, 20.0), u.group_rate_per_min, u.chat_rate_per_msg,
+			u.is_online, u.is_busy, u.created_at,
+			COALESCE(p.display_name, u.name),
+			COALESCE(p.languages, 'English, Hindi'),
+			COALESCE(p.interests, 'Conversations, Music'),
+			COALESCE(p.gallery_urls, ''),
+			COALESCE(p.audio_intro_url, ''),
+			(CASE WHEN p.status = 'approved' THEN true ELSE false END) AS profile_verified,
+	`)
+
+	if hasGeo {
+		query.WriteString(fmt.Sprintf(`
+			(6371 * acos(least(1.0, greatest(-1.0, 
+				cos(radians($%d)) * cos(radians(COALESCE(u.latitude, 28.6139))) * 
+				cos(radians(COALESCE(u.longitude, 77.2090)) - radians($%d)) + 
+				sin(radians($%d)) * sin(radians(COALESCE(u.latitude, 28.6139)))
+			)))) AS distance_km,
+		`, argIdx, argIdx+1, argIdx))
+		args = append(args, filter.Latitude, filter.Longitude)
+		argIdx += 2
+	} else {
+		query.WriteString(`NULL::numeric AS distance_km, `)
+	}
+
+	query.WriteString(`COUNT(*) OVER() AS total_count `)
+	query.WriteString(`FROM users u LEFT JOIN model_profiles p ON u.id = p.user_id WHERE u.role = 'model' `)
+
+	if filter.IsOnline != nil && *filter.IsOnline {
+		query.WriteString(fmt.Sprintf(`AND u.is_online = $%d `, argIdx))
+		args = append(args, true)
+		argIdx++
+	}
+
+	if filter.MinAge > 0 {
+		query.WriteString(fmt.Sprintf(`AND COALESCE(u.age, 21) >= $%d `, argIdx))
+		args = append(args, filter.MinAge)
+		argIdx++
+	}
+
+	if filter.MaxAge > 0 {
+		query.WriteString(fmt.Sprintf(`AND COALESCE(u.age, 21) <= $%d `, argIdx))
+		args = append(args, filter.MaxAge)
+		argIdx++
+	}
+
+	if filter.Gender != "" && filter.Gender != "all" {
+		query.WriteString(fmt.Sprintf(`AND LOWER(COALESCE(u.gender, 'female')) = LOWER($%d) `, argIdx))
+		args = append(args, filter.Gender)
+		argIdx++
+	}
+
+	if filter.City != "" {
+		query.WriteString(fmt.Sprintf(`AND LOWER(COALESCE(u.city, '')) LIKE LOWER($%d) `, argIdx))
+		args = append(args, "%"+filter.City+"%")
+		argIdx++
+	}
+
+	if filter.Language != "" {
+		query.WriteString(fmt.Sprintf(`AND LOWER(COALESCE(p.languages, '')) LIKE LOWER($%d) `, argIdx))
+		args = append(args, "%"+filter.Language+"%")
+		argIdx++
+	}
+
+	if filter.Interest != "" {
+		query.WriteString(fmt.Sprintf(`AND LOWER(COALESCE(p.interests, '')) LIKE LOWER($%d) `, argIdx))
+		args = append(args, "%"+filter.Interest+"%")
+		argIdx++
+	}
+
+	if filter.MinRate > 0 {
+		query.WriteString(fmt.Sprintf(`AND u.voice_rate_per_min >= $%d `, argIdx))
+		args = append(args, filter.MinRate)
+		argIdx++
+	}
+
+	if filter.MaxRate > 0 {
+		query.WriteString(fmt.Sprintf(`AND u.voice_rate_per_min <= $%d `, argIdx))
+		args = append(args, filter.MaxRate)
+		argIdx++
+	}
+
+	// Sorting and Filter Modes
+	switch filter.Filter {
+	case "nearby":
+		query.WriteString(`ORDER BY distance_km ASC NULLS LAST, u.is_online DESC, u.rating DESC `)
+	case "new":
+		query.WriteString(`ORDER BY u.created_at DESC `)
+	case "top":
+		query.WriteString(`ORDER BY u.rating DESC, u.total_calls_count DESC `)
+	case "online":
+		query.WriteString(`ORDER BY u.is_online DESC, u.is_busy ASC, u.rating DESC `)
+	default:
+		switch filter.SortBy {
+		case "distance":
+			query.WriteString(`ORDER BY distance_km ASC NULLS LAST, u.is_online DESC `)
+		case "rating":
+			query.WriteString(`ORDER BY u.rating DESC, u.review_count DESC `)
+		case "newest":
+			query.WriteString(`ORDER BY u.created_at DESC `)
+		case "calls", "popularity":
+			query.WriteString(`ORDER BY u.total_calls_count DESC, u.rating DESC `)
+		case "price_low":
+			query.WriteString(`ORDER BY u.voice_rate_per_min ASC `)
+		case "price_high":
+			query.WriteString(`ORDER BY u.voice_rate_per_min DESC `)
+		default:
+			query.WriteString(`ORDER BY u.is_online DESC, u.rating DESC, u.created_at DESC `)
+		}
+	}
+
+	query.WriteString(fmt.Sprintf(`LIMIT $%d OFFSET $%d`, argIdx, argIdx+1))
+	args = append(args, filter.Limit, offset)
+
+	rows, err := r.db.Query(query.String(), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var items []*domain.ModelItem
+	totalCount := 0
+
+	for rows.Next() {
+		var (
+			it           domain.ModelItem
+			languagesStr string
+			interestsStr string
+			galleryStr   string
+			audioIntro   string
+			distNullable sql.NullFloat64
+			verified     bool
+			total        int
+		)
+		err := rows.Scan(
+			&it.ID, &it.Phone, &it.Name, &it.Role, &it.AvatarURL, &it.Bio,
+			&it.Age, &it.Gender, &it.City, &it.State, &it.Country,
+			&it.Latitude, &it.Longitude,
+			&it.Rating, &it.ReviewCount, &it.TotalCallsCount, &it.TotalMinutesSpoken,
+			&it.VoiceRatePerMin, &it.VideoRatePerMin, &it.GroupRatePerMin, &it.ChatRatePerMsg,
+			&it.IsOnline, &it.IsBusy, &it.CreatedAt,
+			&it.DisplayName, &languagesStr, &interestsStr, &galleryStr, &audioIntro,
+			&verified, &distNullable, &total,
+		)
+		if err != nil {
+			continue
+		}
+
+		totalCount = total
+		it.AudioIntroURL = audioIntro
+		it.ProfileVerified = verified
+
+		// Parse comma separated languages and interests
+		if languagesStr != "" {
+			for _, part := range strings.Split(languagesStr, ",") {
+				p := strings.TrimSpace(part)
+				if p != "" {
+					it.Languages = append(it.Languages, p)
+				}
+			}
+		}
+		if interestsStr != "" {
+			for _, part := range strings.Split(interestsStr, ",") {
+				p := strings.TrimSpace(part)
+				if p != "" {
+					it.Interests = append(it.Interests, p)
+				}
+			}
+		}
+		if galleryStr != "" {
+			for _, part := range strings.Split(galleryStr, ",") {
+				p := strings.TrimSpace(part)
+				if p != "" {
+					it.GalleryURLs = append(it.GalleryURLs, p)
+				}
+			}
+		}
+
+		// Distance
+		if distNullable.Valid {
+			d := distNullable.Float64
+			it.DistanceKM = &d
+		}
+
+		// Badges
+		if time.Since(it.CreatedAt) < 14*24*time.Hour {
+			it.IsNew = true
+			it.Badges = append(it.Badges, "New Creator")
+		}
+		if it.Rating >= 4.90 {
+			it.Badges = append(it.Badges, "Top Rated")
+		}
+		if it.TotalCallsCount >= 100 {
+			it.Badges = append(it.Badges, "Popular")
+		}
+		if verified {
+			it.Badges = append(it.Badges, "Verified")
+		}
+		if it.DistanceKM != nil && *it.DistanceKM <= 25.0 {
+			it.Badges = append(it.Badges, "Nearby")
+		}
+
+		items = append(items, &it)
+	}
+
+	return items, totalCount, nil
+}
+
+func (r *userRepo) UpdateUserOnboarding(userID string, p *domain.ModelProfile) error {
+	_, err := r.db.Exec(`
+		UPDATE users
+		SET name = COALESCE(NULLIF($1, ''), name), bio = COALESCE(NULLIF($2, ''), bio), avatar_url = COALESCE(NULLIF($3, ''), avatar_url),
+		    age = CASE WHEN $4 > 0 THEN $4 ELSE age END,
+		    gender = COALESCE(NULLIF($5, ''), gender),
+		    city = COALESCE(NULLIF($6, ''), city),
+		    state = COALESCE(NULLIF($7, ''), state),
+		    country = COALESCE(NULLIF($8, ''), country),
+		    latitude = CASE WHEN $9 != 0 THEN $9 ELSE latitude END,
+		    longitude = CASE WHEN $10 != 0 THEN $10 ELSE longitude END,
+		    voice_rate_per_min = CASE WHEN $11 > 0 THEN $11 ELSE voice_rate_per_min END,
+		    video_rate_per_min = CASE WHEN $12 > 0 THEN $12 ELSE video_rate_per_min END,
+		    group_rate_per_min = CASE WHEN $13 > 0 THEN $13 ELSE group_rate_per_min END,
+		    chat_rate_per_msg = CASE WHEN $14 > 0 THEN $14 ELSE chat_rate_per_msg END
+		WHERE id = $15
+	`, p.DisplayName, p.Bio, p.AvatarURL, p.Age, p.Gender, p.City, p.State, p.Country,
+		p.Latitude, p.Longitude, p.VoiceRatePerMin, p.VideoRatePerMin, p.GroupRatePerMin, p.ChatRatePerMsg, userID)
+	return err
 }
 
 func (r *userRepo) SetPresence(id string, isOnline, isBusy bool) error {
@@ -946,60 +1315,162 @@ func (r *paymentRepo) GetAuditLogs(paymentID string) ([]*domain.PaymentAuditLog,
 type modelOnboardingRepo struct{ db *sql.DB }
 
 func (r *modelOnboardingRepo) SaveProfile(p *domain.ModelProfile) error {
+	galleryStr := strings.Join(p.GalleryURLs, ",")
+	if p.SafetyAcceptedAt == nil {
+		now := time.Now()
+		p.SafetyAcceptedAt = &now
+	}
+
 	_, err := r.db.Exec(`
-		INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, payout_upi, payout_bank_acc, payout_ifsc, audio_intro_url, status, rejection_reason, report_count, is_suspended, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+		INSERT INTO model_profiles (
+			id, user_id, full_legal_name, display_name, bio, avatar_url, gallery_urls,
+			date_of_birth, age, gender, govt_id_type, govt_id_number, govt_id_doc_url, selfie_verification_url,
+			city, state, country, pincode, address_line, latitude, longitude,
+			languages, interests, voice_rate_per_min, video_rate_per_min, group_rate_per_min, chat_rate_per_msg,
+			payout_method, payout_upi, payout_bank_acc, payout_ifsc, payout_beneficiary_name, pan_number,
+			audio_intro_url, status, rejection_reason, agreed_to_safety_guidelines, agreed_to_terms, safety_accepted_at,
+			report_count, is_suspended, created_at, updated_at
+		)
+		VALUES (
+			$1, $2, $3, $4, $5, $6, $7,
+			$8, $9, $10, $11, $12, $13, $14,
+			$15, $16, $17, $18, $19, $20, $21,
+			$22, $23, $24, $25, $26, $27,
+			$28, $29, $30, $31, $32, $33,
+			$34, $35, $36, $37, $38, $39,
+			$40, $41, $42, $43
+		)
 		ON CONFLICT (user_id) DO UPDATE SET
-			display_name = EXCLUDED.display_name, bio = EXCLUDED.bio, avatar_url = EXCLUDED.avatar_url,
-			age = EXCLUDED.age, gender = EXCLUDED.gender, languages = EXCLUDED.languages, interests = EXCLUDED.interests,
-			voice_rate_per_min = EXCLUDED.voice_rate_per_min, group_rate_per_min = EXCLUDED.group_rate_per_min, chat_rate_per_msg = EXCLUDED.chat_rate_per_msg,
-			payout_upi = EXCLUDED.payout_upi, payout_bank_acc = EXCLUDED.payout_bank_acc, payout_ifsc = EXCLUDED.payout_ifsc,
+			full_legal_name = EXCLUDED.full_legal_name,
+			display_name = EXCLUDED.display_name, bio = EXCLUDED.bio, avatar_url = EXCLUDED.avatar_url, gallery_urls = EXCLUDED.gallery_urls,
+			date_of_birth = EXCLUDED.date_of_birth, age = EXCLUDED.age, gender = EXCLUDED.gender,
+			govt_id_type = EXCLUDED.govt_id_type, govt_id_number = EXCLUDED.govt_id_number,
+			govt_id_doc_url = EXCLUDED.govt_id_doc_url, selfie_verification_url = EXCLUDED.selfie_verification_url,
+			city = EXCLUDED.city, state = EXCLUDED.state, country = EXCLUDED.country, pincode = EXCLUDED.pincode, address_line = EXCLUDED.address_line,
+			latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
+			languages = EXCLUDED.languages, interests = EXCLUDED.interests,
+			voice_rate_per_min = EXCLUDED.voice_rate_per_min, video_rate_per_min = EXCLUDED.video_rate_per_min,
+			group_rate_per_min = EXCLUDED.group_rate_per_min, chat_rate_per_msg = EXCLUDED.chat_rate_per_msg,
+			payout_method = EXCLUDED.payout_method, payout_upi = EXCLUDED.payout_upi,
+			payout_bank_acc = EXCLUDED.payout_bank_acc, payout_ifsc = EXCLUDED.payout_ifsc,
+			payout_beneficiary_name = EXCLUDED.payout_beneficiary_name, pan_number = EXCLUDED.pan_number,
 			audio_intro_url = EXCLUDED.audio_intro_url, status = EXCLUDED.status, updated_at = NOW()
-	`, p.ID, p.UserID, p.DisplayName, p.Bio, p.AvatarURL, p.Age, p.Gender, p.Languages, p.Interests,
-		p.VoiceRatePerMin, p.GroupRatePerMin, p.ChatRatePerMsg, p.PayoutUPI, p.PayoutBankAcc, p.PayoutIFSC,
-		p.AudioIntroURL, p.Status, p.RejectionReason, p.ReportCount, p.IsSuspended, p.CreatedAt, p.UpdatedAt)
+	`,
+		p.ID, p.UserID, p.FullLegalName, p.DisplayName, p.Bio, p.AvatarURL, galleryStr,
+		p.DateOfBirth, p.Age, p.Gender, p.GovtIDType, p.GovtIDNumber, p.GovtIDDocURL, p.SelfieVerificationURL,
+		p.City, p.State, p.Country, p.Pincode, p.AddressLine, p.Latitude, p.Longitude,
+		p.Languages, p.Interests, p.VoiceRatePerMin, p.VideoRatePerMin, p.GroupRatePerMin, p.ChatRatePerMsg,
+		p.PayoutMethod, p.PayoutUPI, p.PayoutBankAcc, p.PayoutIFSC, p.PayoutBeneficiaryName, p.PANNumber,
+		p.AudioIntroURL, p.Status, p.RejectionReason, p.AgreedToSafetyGuidelines, p.AgreedToTerms, p.SafetyAcceptedAt,
+		p.ReportCount, p.IsSuspended, p.CreatedAt, p.UpdatedAt,
+	)
 	return err
 }
 
 func (r *modelOnboardingRepo) UpdateProfile(p *domain.ModelProfile) error {
 	p.UpdatedAt = time.Now()
+	galleryStr := strings.Join(p.GalleryURLs, ",")
+
 	_, err := r.db.Exec(`
 		UPDATE model_profiles
-		SET display_name = $1, bio = $2, avatar_url = $3, age = $4, gender = $5, languages = $6, interests = $7,
-		    voice_rate_per_min = $8, group_rate_per_min = $9, chat_rate_per_msg = $10, payout_upi = $11, payout_bank_acc = $12,
-		    payout_ifsc = $13, audio_intro_url = $14, status = $15, rejection_reason = $16, report_count = $17, is_suspended = $18, updated_at = $19
-		WHERE user_id = $20
-	`, p.DisplayName, p.Bio, p.AvatarURL, p.Age, p.Gender, p.Languages, p.Interests,
-		p.VoiceRatePerMin, p.GroupRatePerMin, p.ChatRatePerMsg, p.PayoutUPI, p.PayoutBankAcc,
-		p.PayoutIFSC, p.AudioIntroURL, p.Status, p.RejectionReason, p.ReportCount, p.IsSuspended, p.UpdatedAt, p.UserID)
+		SET full_legal_name = $1, display_name = $2, bio = $3, avatar_url = $4, gallery_urls = $5,
+		    date_of_birth = $6, age = $7, gender = $8, govt_id_type = $9, govt_id_number = $10,
+		    govt_id_doc_url = $11, selfie_verification_url = $12, city = $13, state = $14, country = $15,
+		    pincode = $16, address_line = $17, latitude = $18, longitude = $19, languages = $20,
+		    interests = $21, voice_rate_per_min = $22, video_rate_per_min = $23, group_rate_per_min = $24,
+		    chat_rate_per_msg = $25, payout_method = $26, payout_upi = $27, payout_bank_acc = $28,
+		    payout_ifsc = $29, payout_beneficiary_name = $30, pan_number = $31, audio_intro_url = $32,
+		    status = $33, rejection_reason = $34, report_count = $35, is_suspended = $36, updated_at = $37
+		WHERE user_id = $38
+	`,
+		p.FullLegalName, p.DisplayName, p.Bio, p.AvatarURL, galleryStr,
+		p.DateOfBirth, p.Age, p.Gender, p.GovtIDType, p.GovtIDNumber,
+		p.GovtIDDocURL, p.SelfieVerificationURL, p.City, p.State, p.Country,
+		p.Pincode, p.AddressLine, p.Latitude, p.Longitude, p.Languages,
+		p.Interests, p.VoiceRatePerMin, p.VideoRatePerMin, p.GroupRatePerMin,
+		p.ChatRatePerMsg, p.PayoutMethod, p.PayoutUPI, p.PayoutBankAcc,
+		p.PayoutIFSC, p.PayoutBeneficiaryName, p.PANNumber, p.AudioIntroURL,
+		p.Status, p.RejectionReason, p.ReportCount, p.IsSuspended, p.UpdatedAt, p.UserID,
+	)
 	return err
 }
 
 func (r *modelOnboardingRepo) GetProfileByUserID(userID string) (*domain.ModelProfile, error) {
 	var p domain.ModelProfile
-	var upi, bankAcc, ifsc, audioURL, rejReason sql.NullString
+	var (
+		legalName, galleryStr, dob, idType, idNum, idDoc, selfie, city, state, country, pincode, addr,
+		payMethod, upi, bankAcc, ifsc, beneName, pan, audioURL, rejReason sql.NullString
+		safetyAccepted sql.NullTime
+	)
+
 	err := r.db.QueryRow(`
-		SELECT id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, payout_upi, payout_bank_acc, payout_ifsc, audio_intro_url, status, rejection_reason, report_count, is_suspended, created_at, updated_at
+		SELECT 
+			id, user_id, full_legal_name, display_name, bio, avatar_url, gallery_urls,
+			date_of_birth, age, gender, govt_id_type, govt_id_number, govt_id_doc_url, selfie_verification_url,
+			city, state, country, pincode, address_line, COALESCE(latitude, 0), COALESCE(longitude, 0),
+			languages, interests, voice_rate_per_min, COALESCE(video_rate_per_min, 20.0), group_rate_per_min, chat_rate_per_msg,
+			payout_method, payout_upi, payout_bank_acc, payout_ifsc, payout_beneficiary_name, pan_number,
+			audio_intro_url, status, rejection_reason, agreed_to_safety_guidelines, agreed_to_terms, safety_accepted_at,
+			report_count, is_suspended, created_at, updated_at
 		FROM model_profiles WHERE user_id = $1
 	`, userID).Scan(
-		&p.ID, &p.UserID, &p.DisplayName, &p.Bio, &p.AvatarURL, &p.Age, &p.Gender, &p.Languages, &p.Interests,
-		&p.VoiceRatePerMin, &p.GroupRatePerMin, &p.ChatRatePerMsg, &upi, &bankAcc, &ifsc, &audioURL,
-		&p.Status, &rejReason, &p.ReportCount, &p.IsSuspended, &p.CreatedAt, &p.UpdatedAt,
+		&p.ID, &p.UserID, &legalName, &p.DisplayName, &p.Bio, &p.AvatarURL, &galleryStr,
+		&dob, &p.Age, &p.Gender, &idType, &idNum, &idDoc, &selfie,
+		&city, &state, &country, &pincode, &addr, &p.Latitude, &p.Longitude,
+		&p.Languages, &p.Interests, &p.VoiceRatePerMin, &p.VideoRatePerMin, &p.GroupRatePerMin, &p.ChatRatePerMsg,
+		&payMethod, &upi, &bankAcc, &ifsc, &beneName, &pan,
+		&audioURL, &p.Status, &rejReason, &p.AgreedToSafetyGuidelines, &p.AgreedToTerms, &safetyAccepted,
+		&p.ReportCount, &p.IsSuspended, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("model profile not found: %w", err)
 	}
+
+	p.FullLegalName = legalName.String
+	p.DateOfBirth = dob.String
+	p.GovtIDType = idType.String
+	p.GovtIDNumber = idNum.String
+	p.GovtIDDocURL = idDoc.String
+	p.SelfieVerificationURL = selfie.String
+	p.City = city.String
+	p.State = state.String
+	p.Country = country.String
+	p.Pincode = pincode.String
+	p.AddressLine = addr.String
+	p.PayoutMethod = payMethod.String
 	p.PayoutUPI = upi.String
 	p.PayoutBankAcc = bankAcc.String
 	p.PayoutIFSC = ifsc.String
+	p.PayoutBeneficiaryName = beneName.String
+	p.PANNumber = pan.String
 	p.AudioIntroURL = audioURL.String
 	p.RejectionReason = rejReason.String
+	if safetyAccepted.Valid {
+		p.SafetyAcceptedAt = &safetyAccepted.Time
+	}
+
+	if galleryStr.Valid && galleryStr.String != "" {
+		for _, part := range strings.Split(galleryStr.String, ",") {
+			pStr := strings.TrimSpace(part)
+			if pStr != "" {
+				p.GalleryURLs = append(p.GalleryURLs, pStr)
+			}
+		}
+	}
+
 	return &p, nil
 }
 
 func (r *modelOnboardingRepo) ListPendingProfiles() ([]*domain.ModelProfile, error) {
 	rows, err := r.db.Query(`
-		SELECT id, user_id, display_name, bio, avatar_url, age, gender, languages, interests, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, payout_upi, payout_bank_acc, payout_ifsc, audio_intro_url, status, rejection_reason, report_count, is_suspended, created_at, updated_at
+		SELECT 
+			id, user_id, full_legal_name, display_name, bio, avatar_url, gallery_urls,
+			date_of_birth, age, gender, govt_id_type, govt_id_number, govt_id_doc_url, selfie_verification_url,
+			city, state, country, pincode, address_line, COALESCE(latitude, 0), COALESCE(longitude, 0),
+			languages, interests, voice_rate_per_min, COALESCE(video_rate_per_min, 20.0), group_rate_per_min, chat_rate_per_msg,
+			payout_method, payout_upi, payout_bank_acc, payout_ifsc, payout_beneficiary_name, pan_number,
+			audio_intro_url, status, rejection_reason, agreed_to_safety_guidelines, agreed_to_terms, safety_accepted_at,
+			report_count, is_suspended, created_at, updated_at
 		FROM model_profiles WHERE status = 'pending_review' ORDER BY created_at ASC
 	`)
 	if err != nil {
@@ -1010,17 +1481,50 @@ func (r *modelOnboardingRepo) ListPendingProfiles() ([]*domain.ModelProfile, err
 	var list []*domain.ModelProfile
 	for rows.Next() {
 		var p domain.ModelProfile
-		var upi, bankAcc, ifsc, audioURL, rejReason sql.NullString
+		var (
+			legalName, galleryStr, dob, idType, idNum, idDoc, selfie, city, state, country, pincode, addr,
+			payMethod, upi, bankAcc, ifsc, beneName, pan, audioURL, rejReason sql.NullString
+			safetyAccepted sql.NullTime
+		)
 		if err := rows.Scan(
-			&p.ID, &p.UserID, &p.DisplayName, &p.Bio, &p.AvatarURL, &p.Age, &p.Gender, &p.Languages, &p.Interests,
-			&p.VoiceRatePerMin, &p.GroupRatePerMin, &p.ChatRatePerMsg, &upi, &bankAcc, &ifsc, &audioURL,
-			&p.Status, &rejReason, &p.ReportCount, &p.IsSuspended, &p.CreatedAt, &p.UpdatedAt,
+			&p.ID, &p.UserID, &legalName, &p.DisplayName, &p.Bio, &p.AvatarURL, &galleryStr,
+			&dob, &p.Age, &p.Gender, &idType, &idNum, &idDoc, &selfie,
+			&city, &state, &country, &pincode, &addr, &p.Latitude, &p.Longitude,
+			&p.Languages, &p.Interests, &p.VoiceRatePerMin, &p.VideoRatePerMin, &p.GroupRatePerMin, &p.ChatRatePerMsg,
+			&payMethod, &upi, &bankAcc, &ifsc, &beneName, &pan,
+			&audioURL, &p.Status, &rejReason, &p.AgreedToSafetyGuidelines, &p.AgreedToTerms, &safetyAccepted,
+			&p.ReportCount, &p.IsSuspended, &p.CreatedAt, &p.UpdatedAt,
 		); err == nil {
+			p.FullLegalName = legalName.String
+			p.DateOfBirth = dob.String
+			p.GovtIDType = idType.String
+			p.GovtIDNumber = idNum.String
+			p.GovtIDDocURL = idDoc.String
+			p.SelfieVerificationURL = selfie.String
+			p.City = city.String
+			p.State = state.String
+			p.Country = country.String
+			p.Pincode = pincode.String
+			p.AddressLine = addr.String
+			p.PayoutMethod = payMethod.String
 			p.PayoutUPI = upi.String
 			p.PayoutBankAcc = bankAcc.String
 			p.PayoutIFSC = ifsc.String
+			p.PayoutBeneficiaryName = beneName.String
+			p.PANNumber = pan.String
 			p.AudioIntroURL = audioURL.String
 			p.RejectionReason = rejReason.String
+			if safetyAccepted.Valid {
+				p.SafetyAcceptedAt = &safetyAccepted.Time
+			}
+			if galleryStr.Valid && galleryStr.String != "" {
+				for _, part := range strings.Split(galleryStr.String, ",") {
+					pStr := strings.TrimSpace(part)
+					if pStr != "" {
+						p.GalleryURLs = append(p.GalleryURLs, pStr)
+					}
+				}
+			}
 			list = append(list, &p)
 		}
 	}

@@ -21,10 +21,78 @@ type AuthResponse struct {
 	Message   string         `json:"message"`
 }
 
-// Model List DTO
+// Pagination Metadata
+type PaginationMeta struct {
+	CurrentPage int  `json:"current_page"`
+	Limit       int  `json:"limit"`
+	TotalCount  int  `json:"total_count"`
+	TotalPages  int  `json:"total_pages"`
+	HasNext     bool `json:"has_next"`
+	HasPrev     bool `json:"has_prev"`
+}
+
+// Model Card DTO for search, nearby discovery & profile viewing
+type ModelCardDTO struct {
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	DisplayName        string    `json:"display_name"`
+	Role               string    `json:"role"`
+	AvatarURL          string    `json:"avatar_url"`
+	GalleryURLs        []string  `json:"gallery_urls,omitempty"`
+	Bio                string    `json:"bio"`
+	Age                int       `json:"age"`
+	Gender             string    `json:"gender"`
+	City               string    `json:"city,omitempty"`
+	State              string    `json:"state,omitempty"`
+	Country            string    `json:"country,omitempty"`
+	Latitude           float64   `json:"latitude,omitempty"`
+	Longitude          float64   `json:"longitude,omitempty"`
+	DistanceKM         *float64  `json:"distance_km,omitempty"` // Distance calculated when user lat/lng is supplied
+	Languages          []string  `json:"languages"`
+	Interests          []string  `json:"interests"`
+	VoiceRatePerMin    float64   `json:"voice_rate_per_min"`
+	VideoRatePerMin    float64   `json:"video_rate_per_min"`
+	GroupRatePerMin    float64   `json:"group_rate_per_min"`
+	ChatRatePerMsg     float64   `json:"chat_rate_per_msg"`
+	IsOnline           bool      `json:"is_online"`
+	IsBusy             bool      `json:"is_busy"`
+	Rating             float64   `json:"rating"`
+	ReviewCount        int       `json:"review_count"`
+	TotalCallsCount    int       `json:"total_calls_count"`
+	TotalMinutesSpoken int       `json:"total_minutes_spoken"`
+	Badges             []string  `json:"badges"`
+	IsNew              bool      `json:"is_new"`
+	AudioIntroURL      string    `json:"audio_intro_url,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+// Model Filter Query DTO
+type ModelFilterQuery struct {
+	Filter        string   `json:"filter"` // "all", "nearby", "new", "top", "online"
+	Lat           float64  `json:"lat"`
+	Lng           float64  `json:"lng"`
+	MaxDistanceKM float64  `json:"max_distance_km"`
+	City          string   `json:"city"`
+	State         string   `json:"state"`
+	MinAge        int      `json:"min_age"`
+	MaxAge        int      `json:"max_age"`
+	Gender        string   `json:"gender"`
+	Language      string   `json:"language"`
+	Interest      string   `json:"interest"`
+	MinRate       float64  `json:"min_rate"`
+	MaxRate       float64  `json:"max_rate"`
+	IsOnline      *bool    `json:"is_online"`
+	SortBy        string   `json:"sort_by"` // "distance", "rating", "newest", "calls", "price_low", "price_high", "popularity"
+	Page          int      `json:"page"`
+	Limit         int      `json:"limit"`
+}
+
+// Model List Response DTO (Paginated & Filter-Aware)
 type ModelListResponse struct {
-	Count  int            `json:"count"`
-	Models []*domain.User `json:"models"`
+	Count          int                    `json:"count"`
+	Pagination     PaginationMeta         `json:"pagination"`
+	FiltersApplied map[string]interface{} `json:"filters_applied"`
+	Models         []*ModelCardDTO        `json:"models"`
 }
 
 // Wallet DTOs
@@ -110,22 +178,42 @@ type PaymentTimelineResponse struct {
 	Count     int                       `json:"step_count"`
 }
 
-// Model Onboarding DTOs
+// Complete Model Onboarding Request DTO (Backend Specification)
 type ModelOnboardingRequest struct {
-	DisplayName     string  `json:"display_name"`
-	Bio             string  `json:"bio"`
-	AvatarURL       string  `json:"avatar_url"`
-	Age             int     `json:"age"` // Must be >= 18
-	Gender          string  `json:"gender"`
-	Languages       string  `json:"languages"`
-	Interests       string  `json:"interests"`
-	VoiceRatePerMin float64 `json:"voice_rate_per_min"`
-	GroupRatePerMin float64 `json:"group_rate_per_min"`
-	ChatRatePerMsg  float64 `json:"chat_rate_per_msg"`
-	PayoutUPI       string  `json:"payout_upi,omitempty"`
-	PayoutBankAcc   string  `json:"payout_bank_acc,omitempty"`
-	PayoutIFSC      string  `json:"payout_ifsc,omitempty"`
-	AudioIntroURL   string  `json:"audio_intro_url,omitempty"`
+	FullLegalName            string   `json:"full_legal_name,omitempty"`
+	DisplayName              string   `json:"display_name"`
+	Bio                      string   `json:"bio"`
+	AvatarURL                string   `json:"avatar_url"`
+	GalleryURLs              []string `json:"gallery_urls,omitempty"`
+	DateOfBirth              string   `json:"date_of_birth,omitempty"` // YYYY-MM-DD
+	Age                      int      `json:"age"`                      // Must be >= 18
+	Gender                   string   `json:"gender"`
+	GovtIDType               string   `json:"govt_id_type,omitempty"` // "aadhaar", "pan", "passport", "voter_id", "driving_license"
+	GovtIDNumber             string   `json:"govt_id_number,omitempty"`
+	GovtIDDocURL             string   `json:"govt_id_doc_url,omitempty"`
+	SelfieVerificationURL    string   `json:"selfie_verification_url,omitempty"`
+	City                     string   `json:"city,omitempty"`
+	State                    string   `json:"state,omitempty"`
+	Country                  string   `json:"country,omitempty"`
+	Pincode                  string   `json:"pincode,omitempty"`
+	AddressLine              string   `json:"address_line,omitempty"`
+	Latitude                 float64  `json:"latitude,omitempty"`
+	Longitude                float64  `json:"longitude,omitempty"`
+	Languages                string   `json:"languages"` // e.g. "English, Hindi, Punjabi"
+	Interests                string   `json:"interests"` // e.g. "Music, Astrology, Tech"
+	VoiceRatePerMin          float64  `json:"voice_rate_per_min"`
+	VideoRatePerMin          float64  `json:"video_rate_per_min"`
+	GroupRatePerMin          float64  `json:"group_rate_per_min"`
+	ChatRatePerMsg           float64  `json:"chat_rate_per_msg"`
+	PayoutMethod             string   `json:"payout_method,omitempty"` // "upi" or "bank_transfer"
+	PayoutUPI                string   `json:"payout_upi,omitempty"`
+	PayoutBankAcc            string   `json:"payout_bank_acc,omitempty"`
+	PayoutIFSC               string   `json:"payout_ifsc,omitempty"`
+	PayoutBeneficiaryName    string   `json:"payout_beneficiary_name,omitempty"`
+	PANNumber                string   `json:"pan_number,omitempty"` // For TDS compliance
+	AudioIntroURL            string   `json:"audio_intro_url,omitempty"`
+	AgreedToSafetyGuidelines bool     `json:"agreed_to_safety_guidelines"`
+	AgreedToTerms            bool     `json:"agreed_to_terms"`
 }
 
 type ModelOnboardingResponse struct {

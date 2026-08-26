@@ -55,6 +55,37 @@ func (uc *AuthUseCase) ListModels() (*dto.ModelListResponse, error) {
 	return uc.mapper.ToModelListResponse(models), nil
 }
 
+func (uc *AuthUseCase) ListModelsAdvanced(filter *dto.ModelFilterQuery) (*dto.ModelListResponse, error) {
+	if filter == nil {
+		filter = &dto.ModelFilterQuery{Filter: "all", Page: 1, Limit: 20}
+	}
+	domainFilter := &domain.ModelFilterParams{
+		Filter:        filter.Filter,
+		Latitude:      filter.Lat,
+		Longitude:     filter.Lng,
+		MaxDistanceKM: filter.MaxDistanceKM,
+		City:          filter.City,
+		State:         filter.State,
+		MinAge:        filter.MinAge,
+		MaxAge:        filter.MaxAge,
+		Gender:        filter.Gender,
+		Language:      filter.Language,
+		Interest:      filter.Interest,
+		MinRate:       filter.MinRate,
+		MaxRate:       filter.MaxRate,
+		IsOnline:      filter.IsOnline,
+		SortBy:        filter.SortBy,
+		Page:          filter.Page,
+		Limit:         filter.Limit,
+	}
+
+	items, totalCount, err := uc.userRepo.ListModelsAdvanced(domainFilter)
+	if err != nil {
+		return nil, err
+	}
+	return uc.mapper.ToPaginatedModelListResponse(items, totalCount, filter), nil
+}
+
 // 2. Wallet UseCase
 type WalletUseCase struct {
 	walletRepo repository.WalletRepository

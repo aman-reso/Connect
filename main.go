@@ -109,7 +109,10 @@ func main() {
 
 	// Model Onboarding & User Safety / Reporting Routes
 	mux.HandleFunc("/api/model/onboarding", httpDelivery.HandleModelOnboarding)
+	mux.HandleFunc("/api/models/onboarding", httpDelivery.HandleModelOnboarding)
 	mux.HandleFunc("/api/model/onboarding/status", httpDelivery.HandleGetModelOnboardingStatus)
+	mux.HandleFunc("/api/models/onboarding/status", httpDelivery.HandleGetModelOnboardingStatus)
+	mux.HandleFunc("/api/models/onboarding/me", httpDelivery.HandleGetModelOnboardingStatus)
 	mux.HandleFunc("/api/reports", httpDelivery.HandleCreateReport)
 	mux.HandleFunc("/api/reports/model", httpDelivery.HandleGetModelReports)
 
