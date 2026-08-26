@@ -1,0 +1,36 @@
+internal/delivery/http/handler.go
+  h_9c8c4b23da7963 6,69,76-123
+internal/domain/entities.go
+  h_9c8c4b23da7963 30-56,212,214-291
+internal/dto/dtos.go
+  h_9c8c4b23da7963 24-90,92-95,181,183-216
+internal/mapper/mapper.go
+  h_9c8c4b23da7963 30-198,200-210
+internal/repository/interfaces.go
+  h_9c8c4b23da7963 12,14
+internal/repository/memory/memory_repo.go
+  h_9c8c4b23da7963 6-8,87-110,113-136,139-188,205-227,249-260,295-319,391-655
+internal/repository/postgres/postgres_repo.go
+  h_9c8c4b23da7963 7,256-291,300-349,352-375,378-401,408-416,423-432,537,541-543,554,558-560,570-571,583-585,593-841,1318-1323,1325-1342,1344-1356,1358-1366,1372-1373,1376-1394,1400-1405,1407-1414,1417-1423,1428-1440,1444-1445,1448-1460,1466-1473,1484-1488,1490-1496,1498-1509,1513-1514,1517-1527
+internal/usecase/model_safety_usecases.go
+  h_9c8c4b23da7963 33,39-42,55,57-96,103-107,109-114
+internal/usecase/usecase_test.go
+  h_9c8c4b23da7963 161-249
+internal/usecase/usecases.go
+  h_9c8c4b23da7963 58-88
+main.go
+  h_9c8c4b23da7963 112,114-115
+schema.sql
+  h_9c8c4b23da7963 14-24,26,162,166,170-171,174-184,188,191,195-196,200-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "1c68d65d6feda2841814018583a35863dba53b6f",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
