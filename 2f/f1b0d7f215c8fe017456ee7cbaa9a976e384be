@@ -1,0 +1,24 @@
+internal/repository/memory/memory_repo.go
+  h_9c8c4b23da7963 86
+internal/repository/postgres/postgres_repo.go
+  h_9c8c4b23da7963 299
+pkg/store/store.go
+  h_9c8c4b23da7963 45
+pkg/store/store_test.go
+  h_9c8c4b23da7963 36-37
+reset_database.sql
+  h_9c8c4b23da7963 1-179
+web/index.html
+  h_9c8c4b23da7963 1060,1068,1076
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2ff1b0d7f215c8fe017456ee7cbaa9a976e384be",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
