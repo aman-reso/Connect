@@ -148,24 +148,20 @@ func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage
 	h.hub.RegisterCallSession(session)
 
 	// 6. Deliver INCOMING_CALL to Receiver
-	log.Printf("📞 Routing INCOMING_CALL %s -> %s (Rate: ₹%.2f/min, CallID=%s)",
-		client.UserID, receiverID, record.RatePerMin, record.ID)
+	log.Printf("📞 Routing INCOMING_CALL %s (%s) -> %s (Rate: ₹%.2f/min, CallID=%s)",
+		client.UserID, callerUser.Name, receiverID, record.RatePerMin, record.ID)
 
 	h.hub.SendToUser(receiverID, &ws.SignalMessage{
-		Type:        ws.TypeIncomingCall,
-		CallID:      record.ID,
-		CallerID:    client.UserID,
-		ReceiverID:  receiverID,
-		CallType:    record.CallType,
-		RatePerMin:  record.RatePerMin,
-		Rate:        record.RatePerMin,
-		DurationSec: 0,
-		Payload: map[string]any{
-			"caller_name":   callerUser.Name,
-			"caller_avatar": callerUser.AvatarURL,
-			"call_type":     record.CallType,
-			"rate_per_min":  record.RatePerMin,
-		},
+		Type:         ws.TypeIncomingCall,
+		CallID:       record.ID,
+		CallerID:     client.UserID,
+		CallerName:   callerUser.Name,
+		CallerAvatar: callerUser.AvatarURL,
+		ReceiverID:   receiverID,
+		CallType:     record.CallType,
+		RatePerMin:   record.RatePerMin,
+		Rate:         record.RatePerMin,
+		DurationSec:  0,
 	})
 }
 

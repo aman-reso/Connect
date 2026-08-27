@@ -39,6 +39,8 @@ type SignalMessage struct {
 	CallID        string  `json:"call_id,omitempty"`
 	RoomID        string  `json:"room_id,omitempty"`
 	CallerID      string  `json:"caller_id,omitempty"`
+	CallerName    string  `json:"caller_name,omitempty"`
+	CallerAvatar  string  `json:"caller_avatar,omitempty"`
 	ReceiverID    string  `json:"receiver_id,omitempty"`
 	FromUserID    string  `json:"from_user_id,omitempty"`
 	ToUserID      string  `json:"to_user_id,omitempty"`
