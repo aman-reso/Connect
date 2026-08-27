@@ -150,9 +150,16 @@ func main() {
 	mux.HandleFunc("/api/reports", httpDelivery.HandleCreateReport)
 	mux.HandleFunc("/api/reports/model", httpDelivery.HandleGetModelReports)
 
-	// Static Web App Interface
-	fs := http.FileServer(http.Dir("./web"))
-	mux.Handle("/", fs)
+	// API Health / Root Handler
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"service":"Connect Backend API","status":"healthy","version":"1.0.0"}`))
+	})
 
 	handler := corsAndLogMiddleware(mux)
 	server := &http.Server{

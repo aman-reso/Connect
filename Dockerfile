@@ -5,7 +5,6 @@ RUN apk add --no-cache ca-certificates tzdata curl
 
 COPY connect-linux-amd64 /app/connect-app
 RUN chmod +x /app/connect-app
-COPY web /app/web
 COPY schema.sql /app/schema.sql
 
 EXPOSE 8080
