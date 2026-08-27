@@ -1057,7 +1057,7 @@
                 <div class="auth-input-group">
                     <label class="auth-input-label">Full Name</label>
                     <div class="auth-input-box">
-                        <input type="text" id="auth-input-name" placeholder="Enter your name" value="Rahul" />
+                        <input type="text" id="auth-input-name" placeholder="Enter your full name" value="" />
                     </div>
                 </div>
 
@@ -1065,7 +1065,7 @@
                     <label class="auth-input-label">Mobile Number</label>
                     <div class="auth-input-box">
                         <span class="auth-input-prefix">🇮🇳 +91</span>
-                        <input type="tel" id="auth-input-phone" placeholder="9876500001" maxlength="10" value="9876500001" />
+                        <input type="tel" id="auth-input-phone" placeholder="Enter 10-digit mobile" maxlength="10" value="" />
                     </div>
                 </div>
 
@@ -1073,7 +1073,7 @@
                 <div id="auth-otp-section" style="display: none; margin-bottom: 12px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
                     <label class="auth-input-label" style="color: var(--accent-green);">Enter 4-Digit OTP Code</label>
                     <div style="display: flex; gap: 8px; justify-content: center; margin: 8px 0;">
-                        <input type="text" id="auth-otp-code" maxlength="4" value="1234" style="width: 120px; text-align: center; font-size: 1.2rem; font-weight: 800; letter-spacing: 6px; padding: 6px; background: #0B0E14; border: 1px solid var(--accent-green); border-radius: 8px; color: #00E676;">
+                        <input type="text" id="auth-otp-code" maxlength="4" placeholder="1234" value="1234" style="width: 120px; text-align: center; font-size: 1.2rem; font-weight: 800; letter-spacing: 6px; padding: 6px; background: #0B0E14; border: 1px solid var(--accent-green); border-radius: 8px; color: #00E676;">
                     </div>
                     <div style="font-size: 0.68rem; color: var(--text-muted); text-align: center;">
                         Verification code sent. Dev test OTP: <strong style="color: white;">1234</strong>
@@ -1083,40 +1083,6 @@
                 <button class="auth-btn-primary" id="btn-auth-submit" onclick="submitAuthForm()">
                     🔒 Continue & Verify Mobile
                 </button>
-            </div>
-
-            <div class="auth-quick-section">
-                <div class="auth-quick-title">⚡ Or Instant One-Click Login</div>
-                <div class="auth-quick-grid">
-                    <div class="auth-quick-card" onclick="quickLogin('user1')">
-                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80">
-                        <div>
-                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Rahul</div>
-                            <div style="font-size: 0.65rem; color: var(--accent-green);">Caller • ₹50 Bonus</div>
-                        </div>
-                    </div>
-                    <div class="auth-quick-card" onclick="quickLogin('user2')">
-                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80">
-                        <div>
-                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Sameer</div>
-                            <div style="font-size: 0.65rem; color: var(--accent-green);">Caller • ₹50 Bonus</div>
-                        </div>
-                    </div>
-                    <div class="auth-quick-card" onclick="quickLogin('model1')">
-                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80">
-                        <div>
-                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Aanya Sharma</div>
-                            <div style="font-size: 0.65rem; color: var(--primary);">Creator • ₹10/min</div>
-                        </div>
-                    </div>
-                    <div class="auth-quick-card" onclick="quickLogin('model3')">
-                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&auto=format&fit=crop&q=80">
-                        <div>
-                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Pooja Verma</div>
-                            <div style="font-size: 0.65rem; color: var(--primary);">Creator • ₹20/min</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 

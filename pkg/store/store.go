@@ -42,63 +42,7 @@ func NewStore() *Store {
 
 // Seed initial model profiles with rates
 func (s *Store) seedDefaultModels() {
-	seedModels := []*models.User{
-		{
-			ID:              "model-1",
-			Phone:           "9876543210",
-			Name:            "Aanya Sharma",
-			Role:            models.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Love deep late-night conversations, music & psychology 🌙",
-			VoiceRatePerMin: 10.0, // 1-on-1: ₹10/min
-			GroupRatePerMin: 5.0,  // Group Room: ₹5/min
-			ChatRatePerMsg:  1.0,  // ₹1/msg
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
-		},
-		{
-			ID:              "model-2",
-			Phone:           "9876543211",
-			Name:            "Riya Sen",
-			Role:            models.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Artist & traveler. Let's talk about dreams & coffee ☕✨",
-			VoiceRatePerMin: 15.0, // 1-on-1: ₹15/min
-			GroupRatePerMin: 7.0,  // Group Room: ₹7/min
-			ChatRatePerMsg:  2.0,  // ₹2/msg
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
-		},
-		{
-			ID:              "model-3",
-			Phone:           "9876543212",
-			Name:            "Pooja Verma",
-			Role:            models.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Friendly listener & anime enthusiast. Always here to cheer you up!",
-			VoiceRatePerMin: 20.0, // 1-on-1: ₹20/min
-			GroupRatePerMin: 8.0,  // Group Room: ₹8/min
-			ChatRatePerMsg:  2.5,  // ₹2.5/msg
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
-		},
-	}
-
-	for _, m := range seedModels {
-		s.users[m.ID] = m
-		s.tokens["token_"+m.ID] = m.ID
-		s.wallets[m.ID] = &models.Wallet{
-			UserID:      m.ID,
-			Balance:     0,
-			BonusGiven:  0,
-			TotalSpent:  0,
-			TotalEarned: 0,
-			UpdatedAt:   time.Now(),
-		}
-	}
+	// Clean State: No mock models. Pure real registered accounts.
 }
 
 // User & Auth methods

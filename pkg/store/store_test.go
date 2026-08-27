@@ -33,11 +33,8 @@ func TestCallFinancialsAndHistory(t *testing.T) {
 	st := store.NewStore()
 
 	caller, _, _ := st.CreateOrLoginUser("9999988888", "Rohan", models.RoleUser)
-	modelList := st.ListModels()
-	if len(modelList) == 0 {
-		t.Fatalf("Expected default models to be seeded")
-	}
-	targetModel := modelList[0]
+	targetModel, _, _ := st.CreateOrLoginUser("9999977777", "Model User", models.RoleModel)
+	targetModel.VoiceRatePerMin = 10.0
 
 	callID := "test_call_001"
 	record := &models.CallRecord{
