@@ -150,6 +150,9 @@ func main() {
 	mux.HandleFunc("/api/reports", httpDelivery.HandleCreateReport)
 	mux.HandleFunc("/api/reports/model", httpDelivery.HandleGetModelReports)
 
+	// Admin Maintenance Routes
+	mux.HandleFunc("/api/admin/clean-mock-data", httpDelivery.HandleCleanMockData)
+
 	// API Health / Root Handler
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {

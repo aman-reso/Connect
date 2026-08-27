@@ -511,6 +511,15 @@ func (r *userRepo) ListOnlineUsers() ([]*domain.User, error) {
 	return list, nil
 }
 
+func (r *userRepo) DeleteMockModels() error {
+	_, err := r.db.Exec(`
+		DELETE FROM model_profiles WHERE user_id IN ('model-1', 'model-2', 'model-3', 'model-4', 'user-1', 'user-2', 'user-3');
+		DELETE FROM wallets WHERE user_id IN ('model-1', 'model-2', 'model-3', 'model-4', 'user-1', 'user-2', 'user-3');
+		DELETE FROM users WHERE id IN ('model-1', 'model-2', 'model-3', 'model-4', 'user-1', 'user-2', 'user-3');
+	`)
+	return err
+}
+
 func (r *userRepo) ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error) {
 	if filter.Page <= 0 {
 		filter.Page = 1

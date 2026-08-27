@@ -292,6 +292,19 @@ func (r *memUserRepo) ListOnlineUsers() ([]*domain.User, error) {
 	return list, nil
 }
 
+func (r *memUserRepo) DeleteMockModels() error {
+	r.data.mu.Lock()
+	defer r.data.mu.Unlock()
+
+	mockIDs := []string{"model-1", "model-2", "model-3", "model-4", "user-1", "user-2", "user-3"}
+	for _, id := range mockIDs {
+		delete(r.data.users, id)
+		delete(r.data.profiles, id)
+		delete(r.data.wallets, id)
+	}
+	return nil
+}
+
 func (r *memUserRepo) ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error) {
 	r.data.mu.RLock()
 	defer r.data.mu.RUnlock()

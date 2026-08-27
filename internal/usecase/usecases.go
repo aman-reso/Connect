@@ -102,6 +102,10 @@ func (uc *AuthUseCase) ListAvailableUsers() (*dto.ModelListResponse, error) {
 	return uc.mapper.ToAvailableUsersListResponse(users), nil
 }
 
+func (uc *AuthUseCase) DeleteMockModels() error {
+	return uc.userRepo.DeleteMockModels()
+}
+
 // 2. Wallet UseCase
 type WalletUseCase struct {
 	walletRepo repository.WalletRepository

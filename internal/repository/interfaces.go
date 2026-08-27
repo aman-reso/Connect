@@ -12,6 +12,7 @@ type UserRepository interface {
 	ListModels() ([]*domain.User, error)
 	ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error)
 	ListOnlineUsers() ([]*domain.User, error)
+	DeleteMockModels() error
 	SetPresence(id string, isOnline, isBusy bool) error
 	UpdateUserOnboarding(userID string, p *domain.ModelProfile) error
 }
