@@ -1,0 +1,16 @@
+internal/delivery/ws/handlers/call_handler.go
+  h_9c8c4b23da7963 265-267,270-302
+internal/usecase/usecases.go
+  h_9c8c4b23da7963 330-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf6ef1c09dc7e2f9b7af6b51a5168d7801edc78b",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
