@@ -105,6 +105,40 @@ type WalletResponse struct {
 	Transactions []*domain.Transaction `json:"transactions,omitempty"`
 }
 
+// Wallet Pack DTOs
+type WalletPackDTO struct {
+	ID          string  `json:"id"`
+	Coins       int     `json:"coins"`
+	BonusCoins  int     `json:"bonus_coins"`
+	TotalCoins  int     `json:"total_coins"`
+	PriceINR    float64 `json:"price_inr"`
+	Badge       string  `json:"badge,omitempty"`
+	IsPopular   bool    `json:"is_popular"`
+	Description string  `json:"description"`
+}
+
+type WalletPacksResponse struct {
+	Count int              `json:"count"`
+	Packs []*WalletPackDTO `json:"packs"`
+}
+
+// Check Call Balance DTOs
+type CheckCallBalanceRequest struct {
+	ModelID  string `json:"model_id"`
+	CallType string `json:"call_type,omitempty"` // "voice" or "video"
+}
+
+type CheckCallBalanceResponse struct {
+	CanCall        bool    `json:"can_call"`
+	Balance        float64 `json:"balance"`
+	RatePerMin     float64 `json:"rate_per_min"`
+	MinRequired    float64 `json:"min_required"`
+	MaxDurationSec int     `json:"max_duration_sec"`
+	ModelID        string  `json:"model_id"`
+	ModelName      string  `json:"model_name"`
+	Message        string  `json:"message"`
+}
+
 // Room DTOs
 type CreateRoomRequest struct {
 	Title      string  `json:"title"`
@@ -123,11 +157,33 @@ type CallHistoryResponse struct {
 	PrivacyNotice string               `json:"privacy_notice"`
 }
 
-// Ephemeral Chat DTO
+// Ephemeral Chat DTOs
+type ConversationDTO struct {
+	ID              string `json:"id"`
+	PartnerID       string `json:"partner_id"`
+	PartnerName     string `json:"partner_name"`
+	PartnerAvatar   string `json:"partner_avatar"`
+	LastMessage     string `json:"last_message"`
+	LastMessageTime int64  `json:"last_message_time"`
+	UnreadCount     int    `json:"unread_count"`
+	IsOnline        bool   `json:"is_online"`
+}
+
+type ConversationListResponse struct {
+	Count         int                `json:"count"`
+	Conversations []*ConversationDTO `json:"conversations"`
+	Notice        string             `json:"notice"`
+}
+
 type EphemeralChatResponse struct {
 	PartnerID string                     `json:"partner_id"`
 	Messages  []*domain.EphemeralMessage `json:"messages"`
 	Notice    string                     `json:"notice"`
+}
+
+type SendChatMessageRequest struct {
+	ReceiverID string `json:"receiver_id"`
+	Content    string `json:"content"`
 }
 
 // Live Call Tick DTO

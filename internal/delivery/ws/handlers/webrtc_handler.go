@@ -1,17 +1,19 @@
 package handlers
 
 import (
+	"log"
+
 	"Connect/internal/delivery/ws"
 )
 
 // WebRTCHandler handles SDP offer, answer, and ICE candidate forwarding.
 type WebRTCHandler struct {
-	sender ws.MessageSender
+	hub *ws.Hub
 }
 
 // NewWebRTCHandler creates a new WebRTCHandler.
-func NewWebRTCHandler(sender ws.MessageSender) *WebRTCHandler {
-	return &WebRTCHandler{sender: sender}
+func NewWebRTCHandler(hub *ws.Hub) *WebRTCHandler {
+	return &WebRTCHandler{hub: hub}
 }
 
 // SupportedTypes returns the message types this handler processes.
@@ -25,9 +27,38 @@ func (h *WebRTCHandler) SupportedTypes() []string {
 
 // Handle forwards WebRTC negotiation frames directly to the target peer.
 func (h *WebRTCHandler) Handle(client *ws.Client, msg *ws.SignalMessage) error {
-	if msg.ToUserID == "" {
+	targetUserID := msg.GetTargetUserID()
+
+	// If target ID is not directly in message, infer from active call session
+	if targetUserID == "" {
+		callID := msg.GetCallID()
+		if callID == "" {
+			if cid, ok := h.hub.GetUserCallID(client.UserID); ok {
+				callID = cid
+			}
+		}
+		if callID != "" {
+			if session, ok := h.hub.GetCallSession(callID); ok && session != nil {
+				if client.UserID == session.CallerID {
+					targetUserID = session.ReceiverID
+				} else {
+					targetUserID = session.CallerID
+				}
+			}
+		}
+	}
+
+	if targetUserID == "" {
+		log.Printf("⚠️ WebRTC %s dropped: Target user ID unknown from sender %s", msg.Type, client.UserID)
 		return nil
 	}
-	h.sender.SendToUser(msg.ToUserID, msg)
+
+	msg.CallerID = client.UserID
+	msg.FromUserID = client.UserID
+	msg.ReceiverID = targetUserID
+	msg.ToUserID = targetUserID
+
+	h.hub.SendToUser(targetUserID, msg)
 	return nil
 }
+

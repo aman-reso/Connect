@@ -4,6 +4,8 @@ import (
 	"log"
 	"time"
 
+	"Connect/internal/domain"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -20,6 +22,7 @@ type Client struct {
 	Conn   *websocket.Conn
 	Send   chan []byte
 	UserID string
+	User   *domain.User
 }
 
 // ReadPump listens for incoming WebSocket frames.

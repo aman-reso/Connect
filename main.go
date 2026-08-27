@@ -46,6 +46,7 @@ func main() {
 		walletRepo   repository.WalletRepository
 		callRepo     repository.CallRepository
 		roomRepo     repository.RoomRepository
+		msgRepo      repository.MessageRepository
 		paymentRepo  repository.PaymentRepository
 		onboardRepo  repository.ModelOnboardingRepository
 		reportRepo   repository.ReportRepository
@@ -58,15 +59,15 @@ func main() {
 		if err != nil {
 			log.Printf("⚠️ Warning: PostgreSQL failed: %v. Using Memory Repository.", err)
 			memStore := memory.NewMemoryStore()
-			userRepo, walletRepo, callRepo, roomRepo, paymentRepo, onboardRepo, reportRepo, favoriteRepo = memStore.Users, memStore.Wallets, memStore.Calls, memStore.Rooms, memStore.Payments, memStore.Onboarding, memStore.Reports, memStore.Favorites
+			userRepo, walletRepo, callRepo, roomRepo, msgRepo, paymentRepo, onboardRepo, reportRepo, favoriteRepo = memStore.Users, memStore.Wallets, memStore.Calls, memStore.Rooms, memStore.Messages, memStore.Payments, memStore.Onboarding, memStore.Reports, memStore.Favorites
 		} else {
-			userRepo, walletRepo, callRepo, roomRepo, paymentRepo, onboardRepo, reportRepo, favoriteRepo = pgStore.Users, pgStore.Wallets, pgStore.Calls, pgStore.Rooms, pgStore.Payments, pgStore.Onboarding, pgStore.Reports, pgStore.Favorites
+			userRepo, walletRepo, callRepo, roomRepo, msgRepo, paymentRepo, onboardRepo, reportRepo, favoriteRepo = pgStore.Users, pgStore.Wallets, pgStore.Calls, pgStore.Rooms, pgStore.Messages, pgStore.Payments, pgStore.Onboarding, pgStore.Reports, pgStore.Favorites
 			log.Println("🐘 PostgreSQL Clean Architecture Repository active!")
 		}
 	} else {
 		log.Println("ℹ️ Running with Clean In-Memory Repository. Set DATABASE_URL for PostgreSQL.")
 		memStore := memory.NewMemoryStore()
-		userRepo, walletRepo, callRepo, roomRepo, paymentRepo, onboardRepo, reportRepo, favoriteRepo = memStore.Users, memStore.Wallets, memStore.Calls, memStore.Rooms, memStore.Payments, memStore.Onboarding, memStore.Reports, memStore.Favorites
+		userRepo, walletRepo, callRepo, roomRepo, msgRepo, paymentRepo, onboardRepo, reportRepo, favoriteRepo = memStore.Users, memStore.Wallets, memStore.Calls, memStore.Rooms, memStore.Messages, memStore.Payments, memStore.Onboarding, memStore.Reports, memStore.Favorites
 	}
 
 	// 2. Initialize Mapper Layer
@@ -81,22 +82,40 @@ func main() {
 	onboardUC := usecase.NewModelOnboardingUseCase(onboardRepo, userRepo, m)
 	reportUC := usecase.NewReportUseCase(reportRepo, onboardRepo, userRepo, m)
 	favoriteUC := usecase.NewFavoriteUseCase(favoriteRepo, userRepo, m)
+	chatUC := usecase.NewChatUseCase(msgRepo, userRepo, walletRepo, m)
+
+	// Background 24-Hour Ephemeral Chat Auto-Purge Worker
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if _, err := chatUC.PurgeExpired(); err != nil {
+				log.Printf("⚠️ Ephemeral auto-purge warning: %v", err)
+			}
+		}
+	}()
 
 	// 4. Initialize Delivery Layer (HTTP Controllers & WebSocket Signaling Hub)
-	httpDelivery := deliveryHttp.NewHTTPHandler(authUC, walletUC, callUC, roomUC, paymentUC, onboardUC, reportUC, favoriteUC)
+	httpDelivery := deliveryHttp.NewHTTPHandler(authUC, walletUC, callUC, roomUC, paymentUC, onboardUC, reportUC, favoriteUC, chatUC)
 	wsRouter := deliveryWs.NewRouter()
-	wsHub := deliveryWs.NewHub(wsRouter)
+	wsHub := deliveryWs.NewHub(wsRouter, authUC)
 	wsRouter.Register(wsHandlers.NewWebRTCHandler(wsHub))
-	wsRouter.Register(wsHandlers.NewCallHandler(wsHub, callUC))
+	wsRouter.Register(wsHandlers.NewCallHandler(wsHub, callUC, walletUC))
 	wsRouter.Register(wsHandlers.NewRoomHandler(wsHub, roomUC))
 	wsRouter.Register(wsHandlers.NewChatHandler(wsHub))
 
 	// 5. Register Routes
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", wsHub.ServeWS)
+	mux.HandleFunc("/api/auth", httpDelivery.HandleAuth)
 	mux.HandleFunc("/api/auth/register", httpDelivery.HandleAuth)
 	mux.HandleFunc("/api/auth/login", httpDelivery.HandleAuth)
+	mux.HandleFunc("/api/user/profile", httpDelivery.HandleUserProfile)
+	mux.HandleFunc("/api/models/me", httpDelivery.HandleUserProfile)
+	mux.HandleFunc("/api/v1/user/profile", httpDelivery.HandleUserProfile)
+	mux.HandleFunc("/api/profile", httpDelivery.HandleUserProfile)
 	mux.HandleFunc("/api/models", httpDelivery.HandleModels)
+	mux.HandleFunc("/api/models/", httpDelivery.HandleModels)
 	mux.HandleFunc("/api/models/favorite", httpDelivery.HandleToggleFavorite)
 	mux.HandleFunc("/api/models/favourite", httpDelivery.HandleToggleFavorite)
 	mux.HandleFunc("/api/models/favorites", httpDelivery.HandleGetFavorites)
@@ -104,7 +123,16 @@ func main() {
 	mux.HandleFunc("/api/models/favorite-ids", httpDelivery.HandleGetFavoriteIDs)
 	mux.HandleFunc("/api/rooms", httpDelivery.HandleRooms)
 	mux.HandleFunc("/api/wallet", httpDelivery.HandleWallet)
+	mux.HandleFunc("/api/wallet/packs", httpDelivery.HandleWalletPackages)
+	mux.HandleFunc("/api/wallet/packages", httpDelivery.HandleWalletPackages)
+	mux.HandleFunc("/api/calls/check-balance", httpDelivery.HandleCheckCallBalance)
+	mux.HandleFunc("/api/calls/check", httpDelivery.HandleCheckCallBalance)
 	mux.HandleFunc("/api/history/calls", httpDelivery.HandleHistory)
+
+	// Ephemeral 24-Hour Chat Routes
+	mux.HandleFunc("/api/chat/conversations", httpDelivery.HandleChatConversations)
+	mux.HandleFunc("/api/chat/messages", httpDelivery.HandleChatMessages)
+	mux.HandleFunc("/api/chat/send", httpDelivery.HandleSendChatMessage)
 
 	// Payment State Machine & Audit Routes
 	mux.HandleFunc("/api/payments/order", httpDelivery.HandleCreatePaymentOrder)

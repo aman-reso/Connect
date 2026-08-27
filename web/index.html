@@ -777,6 +777,223 @@
             cursor: pointer;
             font-size: 0.8rem;
         }
+
+        /* Authentication Gate Screen Styles */
+        .auth-gate {
+            display: flex;
+            flex-direction: column;
+            padding: 22px 18px;
+            overflow-y: auto;
+            flex: 1;
+            align-items: center;
+        }
+
+        .auth-logo-wrap {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .auth-brand-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .auth-brand-sub {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .auth-incentive-card {
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.14) 0%, rgba(255, 101, 132, 0.06) 100%);
+            border: 1px dashed var(--primary);
+            border-radius: 14px;
+            padding: 10px 14px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .auth-incentive-icon {
+            font-size: 1.4rem;
+        }
+
+        .auth-card {
+            background: #171D2A;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 16px;
+            width: 100%;
+            margin-bottom: 14px;
+        }
+
+        .auth-role-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .auth-role-option {
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid transparent;
+            border-radius: 14px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .auth-role-option.selected {
+            border-color: var(--primary);
+            background: rgba(255, 51, 102, 0.12);
+            box-shadow: 0 4px 14px rgba(255, 51, 102, 0.25);
+        }
+
+        .auth-role-title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: white;
+            margin-bottom: 2px;
+        }
+
+        .auth-role-desc {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
+        .auth-input-group {
+            margin-bottom: 12px;
+        }
+
+        .auth-input-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .auth-input-box {
+            display: flex;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            align-items: center;
+        }
+
+        .auth-input-prefix {
+            padding: 10px 12px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .auth-input-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px 12px;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .auth-btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            box-shadow: 0 4px 14px rgba(255, 51, 102, 0.35);
+        }
+
+        .auth-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(255, 51, 102, 0.5);
+        }
+
+        .auth-quick-section {
+            width: 100%;
+        }
+
+        .auth-quick-title {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .auth-quick-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .auth-quick-card {
+            background: #171D2A;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .auth-quick-card:hover {
+            border-color: var(--primary);
+            background: rgba(255, 51, 102, 0.08);
+            transform: scale(1.02);
+        }
+
+        .auth-quick-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1.5px solid var(--primary);
+        }
+
+        .btn-logout-header {
+            background: rgba(255, 82, 82, 0.15);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+            color: #FF5252;
+            padding: 5px 9px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-logout-header:hover {
+            background: rgba(255, 82, 82, 0.25);
+        }
     </style>
 </head>
 <body>
@@ -784,30 +1001,126 @@
     <!-- Hidden Remote Audio Element for Real Voice Playback -->
     <audio id="remote-audio-player" autoplay playsinline></audio>
 
-    <div class="top-account-bar">
-        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Active Tab Profile:</span>
-        <div style="display: flex; gap: 6px;">
-            <button class="role-btn" id="role-user1" onclick="switchProfile('user1')">👤 User 1 (Rahul)</button>
-            <button class="role-btn" id="role-user2" onclick="switchProfile('user2')">👤 User 2 (Sameer)</button>
-            <button class="role-btn" id="role-model1" onclick="switchProfile('model1')">💃 Model (Aanya)</button>
-        </div>
-    </div>
-
     <div class="app-container">
         <div class="header">
             <div>
                 <div class="brand-logo">🔥 ConnectLive</div>
                 <div class="current-user-tag" id="current-user-status">
-                    <span>🟢</span> Logged in as: <strong id="header-user-name">Rahul</strong>
+                    <span style="color: var(--text-muted);">🔒 Please Sign In</span>
                 </div>
             </div>
-            <div class="wallet-badge" onclick="showRechargeModal()">
-                <span>₹</span><span id="wallet-balance">0.00</span>
-                <span style="font-size: 0.6rem; background: rgba(0,230,118,0.2); padding: 1px 4px; border-radius: 4px;">+ADD</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div class="wallet-badge" id="header-wallet-btn" onclick="showRechargeModal()" style="display: none;">
+                    <span>₹</span><span id="wallet-balance">0.00</span>
+                    <span style="font-size: 0.6rem; background: rgba(0,230,118,0.2); padding: 1px 4px; border-radius: 4px;">+ADD</span>
+                </div>
+                <button class="btn-logout-header" id="header-logout-btn" onclick="logoutSession()" style="display: none;" title="Logout / Switch Account">
+                    🚪 Logout
+                </button>
             </div>
         </div>
 
-        <div class="view-content" id="main-view">
+        <!-- Authentication Gate View (Displayed when not logged in) -->
+        <div class="auth-gate" id="auth-gate-view" style="display: flex;">
+            <div class="auth-logo-wrap">
+                <div class="auth-brand-title">🔥 ConnectLive</div>
+                <div class="auth-brand-sub">Direct E2EE Voice, HD Video & Live Lounges</div>
+            </div>
+
+            <div class="auth-incentive-card">
+                <div class="auth-incentive-icon">🎁</div>
+                <div style="font-size: 0.74rem; line-height: 1.3;">
+                    <strong style="color: white; display: block;">₹50 Welcome Bonus Guaranteed</strong>
+                    <span style="color: var(--text-muted);">Instant balance credited upon signing up to try voice & video calls.</span>
+                </div>
+            </div>
+
+            <div class="auth-card">
+                <div style="font-size: 0.8rem; font-weight: 700; color: white; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Select Account Type:</span>
+                    <span style="color: var(--primary); font-size: 0.7rem;" id="auth-mode-label">Caller Profile</span>
+                </div>
+
+                <div class="auth-role-selector">
+                    <div class="auth-role-option selected" id="auth-role-user" onclick="selectAuthRole('user')">
+                        <div style="font-size: 1.3rem; margin-bottom: 2px;">👤</div>
+                        <div class="auth-role-title">Caller / User</div>
+                        <div class="auth-role-desc">Browse & call creators</div>
+                    </div>
+                    <div class="auth-role-option" id="auth-role-model" onclick="selectAuthRole('model')">
+                        <div style="font-size: 1.3rem; margin-bottom: 2px;">⭐</div>
+                        <div class="auth-role-title">Creator / Host</div>
+                        <div class="auth-role-desc">Earn ₹/min & host rooms</div>
+                    </div>
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-input-label">Full Name</label>
+                    <div class="auth-input-box">
+                        <input type="text" id="auth-input-name" placeholder="Enter your name" value="Rahul" />
+                    </div>
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-input-label">Mobile Number</label>
+                    <div class="auth-input-box">
+                        <span class="auth-input-prefix">🇮🇳 +91</span>
+                        <input type="tel" id="auth-input-phone" placeholder="9876500001" maxlength="10" value="9876500001" />
+                    </div>
+                </div>
+
+                <!-- OTP Verification Block -->
+                <div id="auth-otp-section" style="display: none; margin-bottom: 12px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
+                    <label class="auth-input-label" style="color: var(--accent-green);">Enter 4-Digit OTP Code</label>
+                    <div style="display: flex; gap: 8px; justify-content: center; margin: 8px 0;">
+                        <input type="text" id="auth-otp-code" maxlength="4" value="1234" style="width: 120px; text-align: center; font-size: 1.2rem; font-weight: 800; letter-spacing: 6px; padding: 6px; background: #0B0E14; border: 1px solid var(--accent-green); border-radius: 8px; color: #00E676;">
+                    </div>
+                    <div style="font-size: 0.68rem; color: var(--text-muted); text-align: center;">
+                        Verification code sent. Dev test OTP: <strong style="color: white;">1234</strong>
+                    </div>
+                </div>
+
+                <button class="auth-btn-primary" id="btn-auth-submit" onclick="submitAuthForm()">
+                    🔒 Continue & Verify Mobile
+                </button>
+            </div>
+
+            <div class="auth-quick-section">
+                <div class="auth-quick-title">⚡ Or Instant One-Click Login</div>
+                <div class="auth-quick-grid">
+                    <div class="auth-quick-card" onclick="quickLogin('user1')">
+                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80">
+                        <div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Rahul</div>
+                            <div style="font-size: 0.65rem; color: var(--accent-green);">Caller • ₹50 Bonus</div>
+                        </div>
+                    </div>
+                    <div class="auth-quick-card" onclick="quickLogin('user2')">
+                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80">
+                        <div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Sameer</div>
+                            <div style="font-size: 0.65rem; color: var(--accent-green);">Caller • ₹50 Bonus</div>
+                        </div>
+                    </div>
+                    <div class="auth-quick-card" onclick="quickLogin('model1')">
+                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80">
+                        <div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Aanya Sharma</div>
+                            <div style="font-size: 0.65rem; color: var(--primary);">Creator • ₹10/min</div>
+                        </div>
+                    </div>
+                    <div class="auth-quick-card" onclick="quickLogin('model3')">
+                        <img class="auth-quick-avatar" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&auto=format&fit=crop&q=80">
+                        <div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: white;">Pooja Verma</div>
+                            <div style="font-size: 0.65rem; color: var(--primary);">Creator • ₹20/min</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="view-content" id="main-view" style="display: none;">
             <div id="tab-models">
                 <div class="bonus-banner" id="bonus-banner">
                     <span class="badge">🎁 BONUS</span>
@@ -880,7 +1193,7 @@
             </div>
         </div>
 
-        <div class="nav-bar">
+        <div class="nav-bar" style="display: none;">
             <div class="nav-item active" id="nav-models-btn" onclick="switchTab('models')">
                 <span>🔥</span>
                 <span>Discover</span>
@@ -1063,12 +1376,14 @@
 
     <script>
         const PROFILES = {
-            'user1': { role: 'user', phone: '9876500001', name: 'Rahul (User 1)' },
-            'user2': { role: 'user', phone: '9876500002', name: 'Sameer (User 2)' },
-            'model1': { role: 'model', phone: '9876543210', name: 'Aanya Sharma' }
+            'user1': { role: 'user', phone: '9876500001', name: 'Rahul' },
+            'user2': { role: 'user', phone: '9876500002', name: 'Sameer' },
+            'model1': { role: 'model', phone: '9876543210', name: 'Aanya Sharma' },
+            'model3': { role: 'model', phone: '9876543212', name: 'Pooja Verma' }
         };
 
-        let currentProfileKey = sessionStorage.getItem('connect_profile_key') || 'user1';
+        let selectedAuthRole = 'user';
+        let otpStepActive = false;
         let currentUser = null;
         let authToken = null;
         let ws = null;
@@ -1108,38 +1423,161 @@
             return `${basePath}${path}`;
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('role') && PROFILES[urlParams.get('role')]) {
-            currentProfileKey = urlParams.get('role');
+        function selectAuthRole(role) {
+            selectedAuthRole = role;
+            document.getElementById('auth-role-user').classList.toggle('selected', role === 'user');
+            document.getElementById('auth-role-model').classList.toggle('selected', role === 'model');
+            document.getElementById('auth-mode-label').innerText = role === 'user' ? 'Caller Profile' : 'Creator Profile';
+            const nameInput = document.getElementById('auth-input-name');
+            const phoneInput = document.getElementById('auth-input-phone');
+            if (role === 'model' && (nameInput.value === 'Rahul' || nameInput.value === '')) {
+                nameInput.value = 'Aanya Sharma';
+                phoneInput.value = '9876543210';
+            } else if (role === 'user' && nameInput.value === 'Aanya Sharma') {
+                nameInput.value = 'Rahul';
+                phoneInput.value = '9876500001';
+            }
         }
 
-        async function switchProfile(key) {
-            currentProfileKey = key;
-            sessionStorage.setItem('connect_profile_key', key);
-            
-            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
-            const activeBtn = document.getElementById('role-' + key);
-            if (activeBtn) activeBtn.classList.add('active');
+        async function submitAuthForm() {
+            const name = document.getElementById('auth-input-name').value.trim();
+            const phone = document.getElementById('auth-input-phone').value.trim();
 
-            const p = PROFILES[key];
-            const res = await fetch(apiURL('/api/auth/register'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(p)
+            if (!name) {
+                alert("Please enter your name.");
+                return;
+            }
+            if (!phone || phone.length < 10) {
+                alert("Please enter a valid 10-digit mobile number.");
+                return;
+            }
+
+            if (!otpStepActive) {
+                otpStepActive = true;
+                document.getElementById('auth-otp-section').style.display = 'block';
+                document.getElementById('btn-auth-submit').innerHTML = '✅ Verify OTP & Enter Connect';
+                return;
+            }
+
+            const otp = document.getElementById('auth-otp-code').value.trim();
+            if (!otp || otp !== '1234') {
+                alert("Invalid OTP. For test verification, use code: 1234");
+                return;
+            }
+
+            await performAuth({
+                phone: phone,
+                name: name,
+                role: selectedAuthRole
             });
-            const data = await res.json();
-            currentUser = data.user;
-            authToken = data.token;
+        }
 
-            document.getElementById('header-user-name').innerText = currentUser.name;
+        async function quickLogin(profileKey) {
+            const p = PROFILES[profileKey];
+            if (!p) return;
+            await performAuth(p);
+        }
+
+        async function performAuth(profile) {
+            try {
+                const res = await fetch(apiURL('/api/auth/register'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profile)
+                });
+                const data = await res.json();
+                if (!data || !data.user) {
+                    alert((data && data.message) || "Authentication failed.");
+                    return;
+                }
+
+                currentUser = data.user;
+                authToken = data.token;
+
+                localStorage.setItem('connect_auth_session', JSON.stringify({
+                    user: currentUser,
+                    token: authToken,
+                    profile: profile
+                }));
+
+                renderAuthenticatedUI(data.wallet ? data.wallet.balance : 0);
+
+                connectWebSocket();
+                loadModels();
+                loadGroupRooms();
+                loadCallHistory();
+            } catch (err) {
+                console.error("Auth error:", err);
+                alert("Authentication error: " + err.message);
+            }
+        }
+
+        function renderAuthenticatedUI(balance) {
+            document.getElementById('auth-gate-view').style.display = 'none';
+            document.getElementById('main-view').style.display = 'block';
+            document.querySelector('.nav-bar').style.display = 'flex';
+            document.getElementById('header-wallet-btn').style.display = 'flex';
+            document.getElementById('header-logout-btn').style.display = 'flex';
+            document.getElementById('current-user-status').innerHTML = `<span>🟢</span> <strong>${currentUser.name}</strong> <span style="font-size: 0.65rem; background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 6px; text-transform: uppercase;">${currentUser.role}</span>`;
+            
             document.getElementById('host-action-box').style.display = currentUser.role === 'model' ? 'block' : 'none';
             document.getElementById('bonus-banner').style.display = currentUser.role === 'model' ? 'none' : 'flex';
-            updateWalletDisplay(data.wallet ? data.wallet.balance : 0);
+            updateWalletDisplay(balance);
+        }
 
-            connectWebSocket();
-            loadModels();
-            loadGroupRooms();
-            loadCallHistory();
+        function logoutSession() {
+            if (confirm("Are you sure you want to log out / switch account?")) {
+                if (ws) {
+                    ws.close();
+                    ws = null;
+                }
+                localStorage.removeItem('connect_auth_session');
+                sessionStorage.removeItem('connect_profile_key');
+                currentUser = null;
+                authToken = null;
+                otpStepActive = false;
+
+                document.getElementById('auth-otp-section').style.display = 'none';
+                document.getElementById('btn-auth-submit').innerHTML = '🔒 Continue & Verify Mobile';
+
+                document.getElementById('auth-gate-view').style.display = 'flex';
+                document.getElementById('main-view').style.display = 'none';
+                document.querySelector('.nav-bar').style.display = 'none';
+                document.getElementById('header-wallet-btn').style.display = 'none';
+                document.getElementById('header-logout-btn').style.display = 'none';
+                document.getElementById('current-user-status').innerHTML = `<span style="color: var(--text-muted);">🔒 Please Sign In</span>`;
+            }
+        }
+
+        function switchProfile(key) {
+            quickLogin(key);
+        }
+
+        function initAuth() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('role') && PROFILES[urlParams.get('role')]) {
+                performAuth(PROFILES[urlParams.get('role')]);
+                return;
+            }
+
+            const saved = localStorage.getItem('connect_auth_session');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.profile) {
+                        performAuth(parsed.profile);
+                        return;
+                    }
+                } catch(e) {}
+            }
+
+            // Default Unauthenticated State
+            document.getElementById('auth-gate-view').style.display = 'flex';
+            document.getElementById('main-view').style.display = 'none';
+            document.querySelector('.nav-bar').style.display = 'none';
+            document.getElementById('header-wallet-btn').style.display = 'none';
+            document.getElementById('header-logout-btn').style.display = 'none';
+            document.getElementById('current-user-status').innerHTML = `<span style="color: var(--text-muted);">🔒 Please Sign In</span>`;
         }
 
         function updateWalletDisplay(balance) {
@@ -2292,7 +2730,7 @@
             }
         }
 
-        switchProfile(currentProfileKey);
+        initAuth();
     </script>
 </body>
 </html>

@@ -86,6 +86,53 @@ func (m *Mapper) ToModelListResponse(models []*domain.User) *dto.ModelListRespon
 	}
 }
 
+func (m *Mapper) ToModelCardDTO(u *domain.User) *dto.ModelCardDTO {
+	if u == nil {
+		return nil
+	}
+	age := u.Age
+	if age == 0 {
+		age = 21
+	}
+	rating := u.Rating
+	if rating == 0 {
+		rating = 4.90
+	}
+	videoRate := u.VideoRatePerMin
+	if videoRate == 0 {
+		videoRate = 20.0
+	}
+	return &dto.ModelCardDTO{
+		ID:                 u.ID,
+		Name:               u.Name,
+		DisplayName:        u.Name,
+		Role:               string(u.Role),
+		AvatarURL:          u.AvatarURL,
+		Bio:                u.Bio,
+		Age:                age,
+		Gender:             u.Gender,
+		City:               u.City,
+		State:              u.State,
+		Country:            u.Country,
+		Latitude:           u.Latitude,
+		Longitude:          u.Longitude,
+		Languages:          []string{"English", "Hindi"},
+		Interests:          []string{"Conversations", "Music"},
+		VoiceRatePerMin:    u.VoiceRatePerMin,
+		VideoRatePerMin:    videoRate,
+		GroupRatePerMin:    u.GroupRatePerMin,
+		ChatRatePerMsg:     u.ChatRatePerMsg,
+		IsOnline:           u.IsOnline,
+		IsBusy:             u.IsBusy,
+		Rating:             rating,
+		ReviewCount:        u.ReviewCount,
+		TotalCallsCount:    u.TotalCallsCount,
+		TotalMinutesSpoken: u.TotalMinutesSpoken,
+		Badges:             []string{"Verified"},
+		CreatedAt:          u.CreatedAt,
+	}
+}
+
 func (m *Mapper) ToPaginatedModelListResponse(items []*domain.ModelItem, totalCount int, filter *dto.ModelFilterQuery) *dto.ModelListResponse {
 	var cards []*dto.ModelCardDTO
 	for _, it := range items {

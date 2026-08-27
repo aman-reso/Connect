@@ -86,6 +86,14 @@ func (uc *AuthUseCase) ListModelsAdvanced(filter *dto.ModelFilterQuery) (*dto.Mo
 	return uc.mapper.ToPaginatedModelListResponse(items, totalCount, filter), nil
 }
 
+func (uc *AuthUseCase) GetModelByID(modelID string) (*dto.ModelCardDTO, error) {
+	user, err := uc.userRepo.GetByID(modelID)
+	if err != nil {
+		return nil, errors.New("model not found")
+	}
+	return uc.mapper.ToModelCardDTO(user), nil
+}
+
 // 2. Wallet UseCase
 type WalletUseCase struct {
 	walletRepo repository.WalletRepository
@@ -117,6 +125,66 @@ func (uc *WalletUseCase) Recharge(userID string, amount float64) (*dto.WalletRes
 	return uc.mapper.ToWalletResponse(wallet, txs), nil
 }
 
+func (uc *WalletUseCase) GetWalletPacks() *dto.WalletPacksResponse {
+	packs := []*dto.WalletPackDTO{
+		{
+			ID:          "pack_50",
+			Coins:       50,
+			BonusCoins:  0,
+			TotalCoins:  50,
+			PriceINR:    50.0,
+			Badge:       "Trial",
+			IsPopular:   false,
+			Description: "50 Coins - Starter quick chat & voice calls",
+		},
+		{
+			ID:          "pack_100",
+			Coins:       100,
+			BonusCoins:  10,
+			TotalCoins:  110,
+			PriceINR:    100.0,
+			Badge:       "Popular",
+			IsPopular:   true,
+			Description: "100 + 10 Free Bonus Coins (10% Extra)",
+		},
+		{
+			ID:          "pack_250",
+			Coins:       250,
+			BonusCoins:  35,
+			TotalCoins:  285,
+			PriceINR:    250.0,
+			Badge:       "Best Value",
+			IsPopular:   false,
+			Description: "250 + 35 Free Bonus Coins (14% Extra)",
+		},
+		{
+			ID:          "pack_500",
+			Coins:       500,
+			BonusCoins:  100,
+			TotalCoins:  600,
+			PriceINR:    500.0,
+			Badge:       "Mega Saver",
+			IsPopular:   false,
+			Description: "500 + 100 Free Bonus Coins (20% Extra)",
+		},
+		{
+			ID:          "pack_1000",
+			Coins:       1000,
+			BonusCoins:  300,
+			TotalCoins:  1300,
+			PriceINR:    1000.0,
+			Badge:       "VIP Pass",
+			IsPopular:   false,
+			Description: "1000 + 300 Free Bonus Coins (30% Extra)",
+		},
+	}
+
+	return &dto.WalletPacksResponse{
+		Count: len(packs),
+		Packs: packs,
+	}
+}
+
 // 3. Call UseCase
 type CallUseCase struct {
 	callRepo   repository.CallRepository
@@ -127,6 +195,48 @@ type CallUseCase struct {
 
 func NewCallUseCase(cRepo repository.CallRepository, uRepo repository.UserRepository, wRepo repository.WalletRepository, m *mapper.Mapper) *CallUseCase {
 	return &CallUseCase{callRepo: cRepo, userRepo: uRepo, walletRepo: wRepo, mapper: m}
+}
+
+func (uc *CallUseCase) CheckCallBalance(callerID, receiverID, callType string) (*dto.CheckCallBalanceResponse, error) {
+	receiver, err := uc.userRepo.GetByID(receiverID)
+	if err != nil {
+		return nil, fmt.Errorf("creator not found")
+	}
+
+	wallet, err := uc.walletRepo.GetWallet(callerID)
+	if err != nil {
+		return nil, fmt.Errorf("caller wallet not found")
+	}
+
+	rate := receiver.VoiceRatePerMin
+	if callType == "video" && receiver.VideoRatePerMin > 0 {
+		rate = receiver.VideoRatePerMin
+	}
+	if rate <= 0 {
+		rate = 10.0
+	}
+
+	canCall := wallet.Balance >= rate
+	maxSec := 0
+	if rate > 0 {
+		maxSec = int((wallet.Balance / rate) * 60)
+	}
+
+	msg := fmt.Sprintf("Balance sufficient for approx %d seconds of %s call", maxSec, callType)
+	if !canCall {
+		msg = fmt.Sprintf("Insufficient balance. Minimum ₹%.2f required for a 1-minute call. Current balance: ₹%.2f.", rate, wallet.Balance)
+	}
+
+	return &dto.CheckCallBalanceResponse{
+		CanCall:        canCall,
+		Balance:        wallet.Balance,
+		RatePerMin:     rate,
+		MinRequired:    rate,
+		MaxDurationSec: maxSec,
+		ModelID:        receiver.ID,
+		ModelName:      receiver.Name,
+		Message:        msg,
+	}, nil
 }
 
 func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string, callTypeOpt ...string) (*domain.CallRecord, error) {

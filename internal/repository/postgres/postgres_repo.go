@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"Connect/internal/domain"
+	"Connect/internal/dto"
 	"Connect/internal/repository"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -455,9 +456,20 @@ func (r *userRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*dom
 
 	if err == nil {
 		newToken := fmt.Sprintf("token_%s_%s", user.ID, uuid.New().String()[:8])
-		_, err = r.db.Exec(`UPDATE users SET active_token = $1, is_online = TRUE WHERE id = $2`, newToken, user.ID)
-		if err != nil {
-			return nil, "", false, err
+		if role == domain.RoleModel {
+			_, _ = r.db.Exec(`UPDATE users SET active_token = $1, role = 'model', is_online = TRUE WHERE id = $2`, newToken, user.ID)
+			user.Role = domain.RoleModel
+			_, _ = r.db.Exec(`
+				INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, city, state, country, latitude, longitude, languages, interests, voice_rate_per_min, video_rate_per_min, group_rate_per_min, chat_rate_per_msg, status, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, 21, 'female', 'New Delhi', 'Delhi', 'India', 28.6139, 77.2090, 'English, Hindi', 'Conversations, Music', $6, $7, $8, $9, 'approved', NOW(), NOW())
+				ON CONFLICT (user_id) DO UPDATE SET status = 'approved', updated_at = NOW()
+			`, "prof_"+user.ID, user.ID, user.Name, user.Bio, user.AvatarURL,
+				user.VoiceRatePerMin, user.VoiceRatePerMin*1.5, user.GroupRatePerMin, user.ChatRatePerMsg)
+		} else {
+			_, err = r.db.Exec(`UPDATE users SET active_token = $1, is_online = TRUE WHERE id = $2`, newToken, user.ID)
+			if err != nil {
+				return nil, "", false, err
+			}
 		}
 		user.ActiveToken = newToken
 		return &user, newToken, false, nil
@@ -503,6 +515,23 @@ func (r *userRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*dom
 		newUser.VoiceRatePerMin, newUser.GroupRatePerMin, newUser.ChatRatePerMsg, true, false, token, newUser.CreatedAt)
 	if err != nil {
 		return nil, "", false, err
+	}
+
+	if role == domain.RoleModel {
+		_, err = tx.Exec(`
+			INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, city, state, country, latitude, longitude, languages, interests, voice_rate_per_min, video_rate_per_min, group_rate_per_min, chat_rate_per_msg, status, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, 21, 'female', 'New Delhi', 'Delhi', 'India', 28.6139, 77.2090, 'English, Hindi', 'Conversations, Music', $6, $7, $8, $9, 'approved', NOW(), NOW())
+			ON CONFLICT (user_id) DO UPDATE SET 
+				display_name = EXCLUDED.display_name,
+				bio = EXCLUDED.bio,
+				avatar_url = EXCLUDED.avatar_url,
+				status = 'approved',
+				updated_at = NOW()
+		`, "prof_"+newUser.ID, newUser.ID, newUser.Name, newUser.Bio, newUser.AvatarURL,
+			newUser.VoiceRatePerMin, newUser.VoiceRatePerMin*1.5, newUser.GroupRatePerMin, newUser.ChatRatePerMsg)
+		if err != nil {
+			return nil, "", false, err
+		}
 	}
 
 	bonus := 0.0
@@ -1194,6 +1223,53 @@ func (r *messageRepo) GetActive(u1, u2 string) ([]*domain.EphemeralMessage, erro
 		var m domain.EphemeralMessage
 		if err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.RoomID, &m.Content, &m.Cost, &m.ExpiresAt, &m.IsRead, &m.CreatedAt); err == nil {
 			list = append(list, &m)
+		}
+	}
+	return list, nil
+}
+
+func (r *messageRepo) GetConversations(userID string) ([]*dto.ConversationDTO, error) {
+	rows, err := r.db.Query(`
+		WITH ranked_messages AS (
+			SELECT 
+				CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS partner_id,
+				content,
+				created_at,
+				is_read,
+				sender_id,
+				ROW_NUMBER() OVER (
+					PARTITION BY (CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END)
+					ORDER BY created_at DESC
+				) as rn
+			FROM ephemeral_messages
+			WHERE (sender_id = $1 OR receiver_id = $1) AND expires_at > NOW()
+		)
+		SELECT 
+			m.partner_id,
+			COALESCE(u.name, 'User') as partner_name,
+			COALESCE(u.avatar_url, '') as partner_avatar,
+			m.content as last_message,
+			EXTRACT(EPOCH FROM m.created_at)*1000 as last_message_time,
+			COALESCE(u.is_online, false) as is_online,
+			COALESCE((SELECT COUNT(*) FROM ephemeral_messages em WHERE em.receiver_id = $1 AND em.sender_id = m.partner_id AND em.is_read = FALSE AND em.expires_at > NOW()), 0) as unread_count
+		FROM ranked_messages m
+		LEFT JOIN users u ON u.id = m.partner_id
+		WHERE m.rn = 1
+		ORDER BY m.created_at DESC;
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*dto.ConversationDTO
+	for rows.Next() {
+		var c dto.ConversationDTO
+		var lastTime float64
+		if err := rows.Scan(&c.PartnerID, &c.PartnerName, &c.PartnerAvatar, &c.LastMessage, &lastTime, &c.IsOnline, &c.UnreadCount); err == nil {
+			c.ID = "conv_" + c.PartnerID
+			c.LastMessageTime = int64(lastTime)
+			list = append(list, &c)
 		}
 	}
 	return list, nil

@@ -12,6 +12,7 @@ type HTTPHandler struct {
 	onboardUC  *usecase.ModelOnboardingUseCase
 	reportUC   *usecase.ReportUseCase
 	favoriteUC *usecase.FavoriteUseCase
+	chatUC     *usecase.ChatUseCase
 }
 
 // NewHTTPHandler constructs the unified HTTP delivery controller.
@@ -24,6 +25,7 @@ func NewHTTPHandler(
 	onboard *usecase.ModelOnboardingUseCase,
 	report *usecase.ReportUseCase,
 	favorite *usecase.FavoriteUseCase,
+	chat *usecase.ChatUseCase,
 ) *HTTPHandler {
 	return &HTTPHandler{
 		authUC:     auth,
@@ -34,5 +36,6 @@ func NewHTTPHandler(
 		onboardUC:  onboard,
 		reportUC:   report,
 		favoriteUC: favorite,
+		chatUC:     chat,
 	}
 }

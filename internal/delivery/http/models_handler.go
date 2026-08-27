@@ -3,16 +3,35 @@ package http
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"Connect/internal/dto"
 )
 
-// HandleModels handles model discovery and filtering.
+// HandleModels handles both model discovery listing and individual model profile retrieval by ID.
 func (h *HTTPHandler) HandleModels(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
+
+	// Check if this is a single model profile request: e.g. /api/models/{id}
+	path := strings.TrimPrefix(r.URL.Path, "/api/models")
+	path = strings.TrimPrefix(path, "/")
+	if path != "" && !strings.Contains(path, "/") {
+		// Specific subroutes like favorites are handled by dedicated routes, but verify here
+		if path != "favorite" && path != "favorites" && path != "favourite" && path != "favourites" && path != "favorite-ids" && path != "onboarding" && path != "me" {
+			modelID := path
+			model, err := h.authUC.GetModelByID(modelID)
+			if err != nil {
+				SendError(w, http.StatusNotFound, "Model not found")
+				return
+			}
+			SendJSON(w, http.StatusOK, "Model profile fetched successfully", model)
+			return
+		}
+	}
+
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	lat, _ := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
@@ -41,3 +60,4 @@ func (h *HTTPHandler) HandleModels(w http.ResponseWriter, r *http.Request) {
 	}
 	SendJSON(w, http.StatusOK, "Models fetched successfully", models)
 }
+

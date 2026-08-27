@@ -2,6 +2,7 @@ package repository
 
 import (
 	"Connect/internal/domain"
+	"Connect/internal/dto"
 )
 
 type UserRepository interface {
@@ -42,6 +43,7 @@ type RoomRepository interface {
 type MessageRepository interface {
 	Save(msg *domain.EphemeralMessage) error
 	GetActive(u1, u2 string) ([]*domain.EphemeralMessage, error)
+	GetConversations(userID string) ([]*dto.ConversationDTO, error)
 	PurgeExpired() error
 }
 
@@ -77,4 +79,6 @@ type FavoriteRepository interface {
 	GetFavoriteModelIDs(userID string) ([]string, error)
 	GetFavoriteModels(userID string) ([]*domain.User, error)
 }
+
+
 

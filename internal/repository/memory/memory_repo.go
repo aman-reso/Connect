@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"Connect/internal/domain"
+	"Connect/internal/dto"
 	"Connect/internal/repository"
 	"github.com/google/uuid"
 )
@@ -1065,6 +1066,32 @@ func (r *memMessageRepo) GetActive(u1, u2 string) ([]*domain.EphemeralMessage, e
 		}
 	}
 	return active, nil
+}
+
+func (r *memMessageRepo) GetConversations(userID string) ([]*dto.ConversationDTO, error) {
+	r.data.mu.RLock()
+	defer r.data.mu.RUnlock()
+
+	var list []*dto.ConversationDTO
+	seen := make(map[string]bool)
+	now := time.Now()
+
+	for _, u := range r.data.users {
+		if u.ID != userID && !seen[u.ID] {
+			seen[u.ID] = true
+			list = append(list, &dto.ConversationDTO{
+				ID:              "conv_" + u.ID,
+				PartnerID:       u.ID,
+				PartnerName:     u.Name,
+				PartnerAvatar:   u.AvatarURL,
+				LastMessage:     u.Bio,
+				LastMessageTime: now.Unix() * 1000,
+				UnreadCount:     0,
+				IsOnline:        u.IsOnline,
+			})
+		}
+	}
+	return list, nil
 }
 
 func (r *memMessageRepo) PurgeExpired() error {
