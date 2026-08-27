@@ -216,12 +216,28 @@ func NewCallUseCase(cRepo repository.CallRepository, uRepo repository.UserReposi
 func (uc *CallUseCase) CheckCallBalance(callerID, receiverID, callType string) (*dto.CheckCallBalanceResponse, error) {
 	receiver, err := uc.userRepo.GetByID(receiverID)
 	if err != nil {
-		return nil, fmt.Errorf("creator not found")
+		return nil, fmt.Errorf("user not found")
 	}
 
-	wallet, err := uc.walletRepo.GetWallet(callerID)
-	if err != nil {
-		return nil, fmt.Errorf("caller wallet not found")
+	caller, _ := uc.userRepo.GetByID(callerID)
+	wallet, _ := uc.walletRepo.GetWallet(callerID)
+	balance := 0.0
+	if wallet != nil {
+		balance = wallet.Balance
+	}
+
+	// 1. Host/Creator Calling Any User: 100% FREE, no recharge needed!
+	if caller != nil && caller.Role == domain.RoleModel {
+		return &dto.CheckCallBalanceResponse{
+			CanCall:        true,
+			Balance:        balance,
+			RatePerMin:     0,
+			MinRequired:    0,
+			MaxDurationSec: 86400,
+			ModelID:        receiver.ID,
+			ModelName:      receiver.Name,
+			Message:        "Host calls are 100% free with unlimited duration",
+		}, nil
 	}
 
 	rate := receiver.VoiceRatePerMin
@@ -232,20 +248,20 @@ func (uc *CallUseCase) CheckCallBalance(callerID, receiverID, callType string) (
 		rate = 10.0
 	}
 
-	canCall := wallet.Balance >= rate
+	canCall := balance >= rate
 	maxSec := 0
 	if rate > 0 {
-		maxSec = int((wallet.Balance / rate) * 60)
+		maxSec = int((balance / rate) * 60)
 	}
 
 	msg := fmt.Sprintf("Balance sufficient for approx %d seconds of %s call", maxSec, callType)
 	if !canCall {
-		msg = fmt.Sprintf("Insufficient balance. Minimum ₹%.2f required for a 1-minute call. Current balance: ₹%.2f.", rate, wallet.Balance)
+		msg = fmt.Sprintf("Insufficient balance. Minimum ₹%.2f required for a 1-minute call. Current balance: ₹%.2f.", rate, balance)
 	}
 
 	return &dto.CheckCallBalanceResponse{
 		CanCall:        canCall,
-		Balance:        wallet.Balance,
+		Balance:        balance,
 		RatePerMin:     rate,
 		MinRequired:    rate,
 		MaxDurationSec: maxSec,
@@ -258,7 +274,7 @@ func (uc *CallUseCase) CheckCallBalance(callerID, receiverID, callType string) (
 func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string, callTypeOpt ...string) (*domain.CallRecord, error) {
 	receiver, err := uc.userRepo.GetByID(receiverID)
 	if err != nil {
-		return nil, fmt.Errorf("host not found")
+		return nil, fmt.Errorf("user not found")
 	}
 
 	callType := "voice"
@@ -267,10 +283,14 @@ func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string, call
 	}
 
 	rate := receiver.VoiceRatePerMin
-	// Balance Check
-	wallet, err := uc.walletRepo.GetWallet(caller.ID)
-	if err != nil || wallet.Balance < rate {
-		return nil, fmt.Errorf("insufficient balance: minimum ₹%.2f required for 1 min call", rate)
+	// Host/Creator Calling: Rate is 0, No balance check!
+	if caller.Role == domain.RoleModel {
+		rate = 0.0
+	} else {
+		wallet, err := uc.walletRepo.GetWallet(caller.ID)
+		if err != nil || wallet.Balance < rate {
+			return nil, fmt.Errorf("insufficient balance: minimum ₹%.2f required for 1 min call", rate)
+		}
 	}
 
 	if receiver.IsBusy {

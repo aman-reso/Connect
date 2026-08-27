@@ -52,19 +52,11 @@ func (h *CallHandler) Handle(client *ws.Client, msg *ws.SignalMessage) error {
 }
 
 func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage) {
-	if client.User != nil && client.User.Role == domain.RoleModel {
-		ws.SendToClient(client, &ws.SignalMessage{
-			Type:   ws.TypeCallError,
-			Reason: "Creator accounts cannot initiate calls to other creators.",
-		})
-		return
-	}
-
 	receiverID := msg.GetTargetUserID()
 	if receiverID == "" {
 		ws.SendToClient(client, &ws.SignalMessage{
 			Type:   ws.TypeCallOffline,
-			Reason: "Model ID missing",
+			Reason: "Target User ID missing",
 		})
 		return
 	}
