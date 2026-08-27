@@ -110,6 +110,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	h.clients.Set(userID, client)
 
 	log.Printf("🔌 WS Client connected: UserID=%s", userID)
+	if h.authUC != nil && user != nil {
+		_ = h.authUC.SetPresence(user.ID, true, false)
+	}
 	h.BroadcastPresence(userID, true)
 
 	go client.WritePump()
@@ -120,6 +123,10 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) UnregisterClient(c *Client) {
 	h.clients.Delete(c.UserID)
 	log.Printf("🔌 WS Client disconnected: UserID=%s", c.UserID)
+
+	if h.authUC != nil && c.User != nil {
+		_ = h.authUC.SetPresence(c.User.ID, false, false)
+	}
 
 	// Clean up user call if active
 	h.mu.RLock()

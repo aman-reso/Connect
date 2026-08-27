@@ -106,6 +106,10 @@ func (uc *AuthUseCase) DeleteMockModels() error {
 	return uc.userRepo.DeleteMockModels()
 }
 
+func (uc *AuthUseCase) SetPresence(userID string, isOnline, isBusy bool) error {
+	return uc.userRepo.SetPresence(userID, isOnline, isBusy)
+}
+
 // 2. Wallet UseCase
 type WalletUseCase struct {
 	walletRepo repository.WalletRepository
