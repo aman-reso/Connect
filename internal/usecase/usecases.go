@@ -293,10 +293,6 @@ func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string, call
 		}
 	}
 
-	if receiver.IsBusy {
-		return nil, fmt.Errorf("%s is currently busy on another call", receiver.Name)
-	}
-
 	callID := "call_" + uuid.New().String()[:8]
 	record := &domain.CallRecord{
 		ID:           callID,
@@ -314,7 +310,6 @@ func (uc *CallUseCase) InitiateCall(caller *domain.User, receiverID string, call
 		return nil, err
 	}
 
-	_ = uc.userRepo.SetPresence(receiver.ID, true, true)
 	return record, nil
 }
 
@@ -332,6 +327,8 @@ func (uc *CallUseCase) AcceptCall(callID string) (*domain.CallRecord, error) {
 	if err := uc.callRepo.Update(record); err != nil {
 		return nil, err
 	}
+	_ = uc.userRepo.SetPresence(record.ReceiverID, true, true)
+	_ = uc.userRepo.SetPresence(record.CallerID, true, true)
 	return record, nil
 }
 

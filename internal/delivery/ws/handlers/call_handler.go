@@ -262,21 +262,44 @@ func (h *CallHandler) startCallTicker(session *ws.ActiveCallSession) {
 			durationSec := int(now.Sub(session.StartedAt).Seconds())
 
 			walletResp, err := h.walletUC.GetWallet(session.CallerID)
-			if err != nil || walletResp == nil || walletResp.Wallet == nil {
-				h.endCall(session.CallID, "Wallet verification error", "system")
-				return
+			balance := 0.0
+			if err == nil && walletResp != nil && walletResp.Wallet != nil {
+				balance = walletResp.Wallet.Balance
 			}
 
-			ratePerSec := session.RatePerMin / 60.0
-			costSoFar := float64(durationSec) * ratePerSec
-			remainingBalance := walletResp.Wallet.Balance - costSoFar
+			costSoFar := 0.0
+			remainingBalance := balance
+			remainingSec := 86400
 
-			remainingSec := 0
-			if ratePerSec > 0 {
-				remainingSec = int(remainingBalance / ratePerSec)
-			}
-			if remainingSec < 0 {
-				remainingSec = 0
+			if session.RatePerMin > 0 {
+				ratePerSec := session.RatePerMin / 60.0
+				costSoFar = float64(durationSec) * ratePerSec
+				remainingBalance = balance - costSoFar
+
+				if ratePerSec > 0 {
+					remainingSec = int(remainingBalance / ratePerSec)
+				}
+				if remainingSec < 0 {
+					remainingSec = 0
+				}
+
+				if remainingSec <= 30 && !warningSent {
+					warningSent = true
+					h.hub.SendToUser(session.CallerID, &ws.SignalMessage{
+						Type:         ws.TypeBalanceLowWarning,
+						CallID:       session.CallID,
+						RemainingSec: remainingSec,
+						Reason:       "Low balance! Call will auto-disconnect in less than 30 seconds.",
+					})
+				}
+
+				// Automatic termination ONLY for paid calls on balance exhaustion
+				if remainingBalance <= 0 || remainingSec <= 0 {
+					log.Printf("⚠️ Balance Exhausted for call %s (Caller: %s) -> Auto Terminating",
+						session.CallID, session.CallerID)
+					h.endCall(session.CallID, "Balance exhausted", "billing_engine")
+					return
+				}
 			}
 
 			tickMsg := &ws.SignalMessage{
@@ -294,24 +317,6 @@ func (h *CallHandler) startCallTicker(session *ws.ActiveCallSession) {
 
 			h.hub.SendToUser(session.CallerID, tickMsg)
 			h.hub.SendToUser(session.ReceiverID, tickMsg)
-
-			if remainingSec <= 30 && !warningSent {
-				warningSent = true
-				h.hub.SendToUser(session.CallerID, &ws.SignalMessage{
-					Type:         ws.TypeBalanceLowWarning,
-					CallID:       session.CallID,
-					RemainingSec: remainingSec,
-					Reason:       "Low balance! Call will auto-disconnect in less than 30 seconds.",
-				})
-			}
-
-			// Automatic termination on balance exhaustion
-			if remainingBalance <= 0 || remainingSec <= 0 {
-				log.Printf("⚠️ Balance Exhausted for call %s (Caller: %s) -> Auto Terminating",
-					session.CallID, session.CallerID)
-				h.endCall(session.CallID, "Balance exhausted", "billing_engine")
-				return
-			}
 		}
 	}
 }
