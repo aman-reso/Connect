@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"Connect/internal/domain"
 	"Connect/internal/dto"
 )
 
@@ -15,7 +16,29 @@ func (h *HTTPHandler) HandleModels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if this is a single model profile request: e.g. /api/models/{id}
+	// 1. Role-based backend check: If caller has role 'model', do not return model discovery catalog
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	token = strings.TrimSpace(token)
+	if token != "" {
+		if u, err := h.authUC.ValidateToken(token); err == nil && u != nil && u.Role == domain.RoleModel {
+			SendJSON(w, http.StatusOK, "Creator view: model discovery is restricted for creator profiles", &dto.ModelListResponse{
+				Count: 0,
+				Pagination: dto.PaginationMeta{
+					CurrentPage: 1,
+					Limit:       0,
+					TotalCount:  0,
+					TotalPages:  1,
+					HasNext:     false,
+					HasPrev:     false,
+				},
+				FiltersApplied: map[string]interface{}{"role": "model"},
+				Models:         []*dto.ModelCardDTO{},
+			})
+			return
+		}
+	}
+
+	// 2. Check if this is a single model profile request: e.g. /api/models/{id}
 	path := strings.TrimPrefix(r.URL.Path, "/api/models")
 	path = strings.TrimPrefix(path, "/")
 	if path != "" && !strings.Contains(path, "/") {

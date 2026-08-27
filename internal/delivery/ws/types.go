@@ -12,6 +12,7 @@ const (
 	TypeCallEnded           = "CALL_ENDED"
 	TypeCallBusy            = "CALL_BUSY"
 	TypeCallOffline         = "CALL_OFFLINE"
+	TypeCallError           = "CALL_ERROR"
 	TypeInsufficientBalance = "CALL_INSUFFICIENT_BALANCE"
 	TypeBalanceLowWarning   = "BALANCE_LOW_WARNING"
 	TypeBalanceExhausted    = "CALL_ENDED_BALANCE_EXHAUSTED"
