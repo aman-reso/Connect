@@ -268,6 +268,39 @@ func (r *memUserRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*
 
 	for _, u := range r.data.users {
 		if u.Phone == phone {
+			if role != "" && u.Role != role {
+				u.Role = role
+			}
+			if name != "" && u.Name != name {
+				u.Name = name
+			}
+			if u.Role == domain.RoleModel {
+				if _, ok := r.data.profiles[u.ID]; !ok {
+					r.data.profiles[u.ID] = &domain.ModelProfile{
+						ID:              "prof_" + u.ID,
+						UserID:          u.ID,
+						DisplayName:     u.Name,
+						Bio:             u.Bio,
+						AvatarURL:       u.AvatarURL,
+						Age:             u.Age,
+						Gender:          u.Gender,
+						City:            u.City,
+						State:           u.State,
+						Country:         u.Country,
+						Latitude:        u.Latitude,
+						Longitude:       u.Longitude,
+						Languages:       "English, Hindi",
+						Interests:       "Conversations, Music, Life",
+						VoiceRatePerMin: u.VoiceRatePerMin,
+						VideoRatePerMin: u.VideoRatePerMin,
+						GroupRatePerMin: u.GroupRatePerMin,
+						ChatRatePerMsg:  u.ChatRatePerMsg,
+						Status:          domain.OnboardingStatusApproved,
+						CreatedAt:       time.Now(),
+						UpdatedAt:       time.Now(),
+					}
+				}
+			}
 			for tok, uid := range r.data.tokens {
 				if uid == u.ID {
 					delete(r.data.tokens, tok)

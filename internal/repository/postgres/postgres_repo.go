@@ -456,20 +456,22 @@ func (r *userRepo) CreateOrLogin(phone, name string, role domain.UserRole) (*dom
 
 	if err == nil {
 		newToken := fmt.Sprintf("token_%s_%s", user.ID, uuid.New().String()[:8])
+		if role != "" && user.Role != role {
+			user.Role = role
+			if name != "" {
+				user.Name = name
+			}
+			_, _ = r.db.Exec(`UPDATE users SET active_token = $1, role = $2, name = $3, is_online = TRUE WHERE id = $4`, newToken, role, user.Name, user.ID)
+		} else {
+			_, _ = r.db.Exec(`UPDATE users SET active_token = $1, is_online = TRUE WHERE id = $2`, newToken, user.ID)
+		}
 		if role == domain.RoleModel {
-			_, _ = r.db.Exec(`UPDATE users SET active_token = $1, role = 'model', is_online = TRUE WHERE id = $2`, newToken, user.ID)
-			user.Role = domain.RoleModel
 			_, _ = r.db.Exec(`
 				INSERT INTO model_profiles (id, user_id, display_name, bio, avatar_url, age, gender, city, state, country, latitude, longitude, languages, interests, voice_rate_per_min, video_rate_per_min, group_rate_per_min, chat_rate_per_msg, status, created_at, updated_at)
 				VALUES ($1, $2, $3, $4, $5, 21, 'female', 'New Delhi', 'Delhi', 'India', 28.6139, 77.2090, 'English, Hindi', 'Conversations, Music', $6, $7, $8, $9, 'approved', NOW(), NOW())
 				ON CONFLICT (user_id) DO UPDATE SET status = 'approved', updated_at = NOW()
 			`, "prof_"+user.ID, user.ID, user.Name, user.Bio, user.AvatarURL,
 				user.VoiceRatePerMin, user.VoiceRatePerMin*1.5, user.GroupRatePerMin, user.ChatRatePerMsg)
-		} else {
-			_, err = r.db.Exec(`UPDATE users SET active_token = $1, is_online = TRUE WHERE id = $2`, newToken, user.ID)
-			if err != nil {
-				return nil, "", false, err
-			}
 		}
 		user.ActiveToken = newToken
 		return &user, newToken, false, nil
