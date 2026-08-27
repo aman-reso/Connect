@@ -1,0 +1,20 @@
+internal/delivery/http/call_handler.go
+  h_9c8c4b23da7963 8,52-58
+internal/delivery/http/models_handler.go
+  h_9c8c4b23da7963 8,19-41
+internal/delivery/ws/handlers/call_handler.go
+  h_9c8c4b23da7963 55-62
+internal/delivery/ws/types.go
+  h_9c8c4b23da7963 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "44d98ea65f40ba6a722ce7c4cec83001ec2ee5b1",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
