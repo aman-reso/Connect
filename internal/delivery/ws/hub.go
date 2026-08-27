@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,12 +81,18 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token = strings.TrimPrefix(token, "Bearer ")
+	token = strings.TrimSpace(token)
+
 	var user *domain.User
 	userID := token
 
 	if h.authUC != nil {
 		if u, err := h.authUC.ValidateToken(token); err == nil && u != nil {
 			user = u
+			userID = u.ID
+		} else if u, err := h.authUC.GetModelByID(token); err == nil && u != nil {
+			user = &domain.User{ID: u.ID, Name: u.Name, Role: domain.UserRole(u.Role), AvatarURL: u.AvatarURL}
 			userID = u.ID
 		}
 	}
@@ -110,8 +117,8 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	h.clients.Set(userID, client)
 
 	log.Printf("🔌 WS Client connected: UserID=%s", userID)
-	if h.authUC != nil && user != nil {
-		_ = h.authUC.SetPresence(user.ID, true, false)
+	if h.authUC != nil {
+		_ = h.authUC.SetPresence(userID, true, false)
 	}
 	h.BroadcastPresence(userID, true)
 
@@ -124,8 +131,8 @@ func (h *Hub) UnregisterClient(c *Client) {
 	h.clients.Delete(c.UserID)
 	log.Printf("🔌 WS Client disconnected: UserID=%s", c.UserID)
 
-	if h.authUC != nil && c.User != nil {
-		_ = h.authUC.SetPresence(c.User.ID, false, false)
+	if h.authUC != nil {
+		_ = h.authUC.SetPresence(c.UserID, false, false)
 	}
 
 	// Clean up user call if active
