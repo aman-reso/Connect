@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"Connect/internal/domain"
 	"Connect/internal/dto"
 )
 
@@ -49,13 +48,6 @@ func (h *HTTPHandler) HandleCheckCallBalance(w http.ResponseWriter, r *http.Requ
 	if token != "" {
 		if u, err := h.authUC.ValidateToken(token); err == nil && u != nil {
 			callerID = u.ID
-			if u.Role == domain.RoleModel {
-				SendJSON(w, http.StatusOK, "Creators cannot place calls", &dto.CheckCallBalanceResponse{
-					CanCall: false,
-					Message: "Creator accounts cannot place outgoing calls to other creators.",
-				})
-				return
-			}
 		}
 	}
 
