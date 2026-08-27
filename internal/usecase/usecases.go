@@ -376,6 +376,10 @@ func (uc *CallUseCase) EndCall(callID string, reason string) (float64, int, erro
 	return cost, durationSec, err
 }
 
+func (uc *CallUseCase) SetPresence(userID string, isOnline, isBusy bool) error {
+	return uc.userRepo.SetPresence(userID, isOnline, isBusy)
+}
+
 func (uc *CallUseCase) GetHistory(userID string) (*dto.CallHistoryResponse, error) {
 	calls, err := uc.callRepo.GetUserHistory(userID)
 	if err != nil {

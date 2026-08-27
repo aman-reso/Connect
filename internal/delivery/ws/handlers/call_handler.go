@@ -322,14 +322,25 @@ func (h *CallHandler) startCallTicker(session *ws.ActiveCallSession) {
 }
 
 func (h *CallHandler) endCall(callID, reason, triggeredBy string) {
-	session, exists := h.hub.EndCallSession(callID)
-	if !exists || session == nil {
-		return
+	session, _ := h.hub.EndCallSession(callID)
+
+	callerID := ""
+	receiverID := ""
+	if session != nil {
+		callerID = session.CallerID
+		receiverID = session.ReceiverID
 	}
 
 	cost, durationSec, err := h.callUC.EndCall(callID, reason)
 	if err != nil {
 		log.Printf("Error settling call %s: %v", callID, err)
+	}
+
+	if callerID != "" {
+		_ = h.callUC.SetPresence(callerID, true, false)
+	}
+	if receiverID != "" {
+		_ = h.callUC.SetPresence(receiverID, true, false)
 	}
 
 	log.Printf("🔴 Call Settled: %s (Duration=%ds, Cost=₹%.2f, Reason='%s')",
@@ -343,15 +354,19 @@ func (h *CallHandler) endCall(callID, reason, triggeredBy string) {
 	endMsg := &ws.SignalMessage{
 		Type:        endMsgType,
 		CallID:      callID,
-		CallerID:    session.CallerID,
-		ReceiverID:  session.ReceiverID,
+		CallerID:    callerID,
+		ReceiverID:  receiverID,
 		DurationSec: int64(durationSec),
 		Cost:        cost,
 		TotalCost:   cost,
 		Reason:      reason,
 	}
 
-	h.hub.SendToUser(session.CallerID, endMsg)
-	h.hub.SendToUser(session.ReceiverID, endMsg)
+	if callerID != "" {
+		h.hub.SendToUser(callerID, endMsg)
+	}
+	if receiverID != "" {
+		h.hub.SendToUser(receiverID, endMsg)
+	}
 }
 
