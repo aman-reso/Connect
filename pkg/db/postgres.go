@@ -34,7 +34,6 @@ func NewPostgresDB(connStr string) (*PostgresDB, error) {
 		return nil, fmt.Errorf("failed to initialize postgres schema: %w", err)
 	}
 
-	p.seedDefaultModels()
 	p.RecoverInterruptedCalls()
 	go p.startEphemeralCleaner()
 
@@ -139,65 +138,7 @@ func (p *PostgresDB) initSchema() error {
 }
 
 func (p *PostgresDB) seedDefaultModels() {
-	seedModels := []*models.User{
-		{
-			ID:              "model-1",
-			Phone:           "9876543210",
-			Name:            "Aanya Sharma",
-			Role:            models.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Love deep late-night conversations, music & psychology 🌙",
-			VoiceRatePerMin: 10.0,
-			GroupRatePerMin: 5.0,
-			ChatRatePerMsg:  1.0,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
-		},
-		{
-			ID:              "model-2",
-			Phone:           "9876543211",
-			Name:            "Riya Sen",
-			Role:            models.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Artist & traveler. Let's talk about dreams & coffee ☕✨",
-			VoiceRatePerMin: 15.0,
-			GroupRatePerMin: 7.0,
-			ChatRatePerMsg:  2.0,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
-		},
-		{
-			ID:              "model-3",
-			Phone:           "9876543212",
-			Name:            "Pooja Verma",
-			Role:            models.RoleModel,
-			AvatarURL:       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80",
-			Bio:             "Friendly listener & anime enthusiast. Always here to cheer you up!",
-			VoiceRatePerMin: 20.0,
-			GroupRatePerMin: 8.0,
-			ChatRatePerMsg:  2.5,
-			IsOnline:        true,
-			IsBusy:          false,
-			CreatedAt:       time.Now(),
-		},
-	}
-
-	for _, m := range seedModels {
-		token := fmt.Sprintf("token_%s_%s", m.ID, "seed")
-		_, _ = p.db.Exec(`
-			INSERT INTO users (id, phone, name, role, avatar_url, bio, voice_rate_per_min, group_rate_per_min, chat_rate_per_msg, is_online, is_busy, active_token)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			ON CONFLICT (phone) DO UPDATE SET active_token = EXCLUDED.active_token
-		`, m.ID, m.Phone, m.Name, m.Role, m.AvatarURL, m.Bio, m.VoiceRatePerMin, m.GroupRatePerMin, m.ChatRatePerMsg, true, false, token)
-
-		_, _ = p.db.Exec(`
-			INSERT INTO wallets (user_id, balance, bonus_given, total_spent, total_earned)
-			VALUES ($1, 0, 0, 0, 0)
-			ON CONFLICT (user_id) DO NOTHING
-		`, m.ID)
-	}
+	// Clean State: No mock models. Pure real registered accounts.
 }
 
 // 1. User & Single-Device Token Operations
