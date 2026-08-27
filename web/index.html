@@ -1122,42 +1122,77 @@
 
         <div class="view-content" id="main-view" style="display: none;">
             <div id="tab-models">
-                <div class="bonus-banner" id="bonus-banner">
-                    <span class="badge">🎁 BONUS</span>
-                    <div style="font-size: 0.75rem;">
-                        <strong>₹50 Free Incentive Active!</strong> Call hosts 1-on-1 or join group lounges!
+                <!-- CALLER / USER DISCOVERY VIEW -->
+                <div id="caller-discovery-view">
+                    <div class="bonus-banner" id="bonus-banner">
+                        <span class="badge">🎁 BONUS</span>
+                        <div style="font-size: 0.75rem;">
+                            <strong>₹50 Free Incentive Active!</strong> Call hosts 1-on-1 or join group lounges!
+                        </div>
                     </div>
+
+                    <div class="section-title">
+                        <span>👥 Group Audio Lounges</span>
+                        <span style="font-size: 0.72rem; color: var(--accent-purple); font-weight: 700;">Multi-User Live</span>
+                    </div>
+                    <div id="rooms-list"></div>
+
+                    <div class="section-title">
+                        <span>🔥 1-on-1 Voice Hosts</span>
+                        <div class="filter-pills">
+                            <button class="filter-pill active" id="filter-all-btn" onclick="setModelFilter('all')">
+                                🌟 All (<span id="all-models-count">0</span>)
+                            </button>
+                            <button class="filter-pill" id="filter-fav-btn" onclick="setModelFilter('favorites')">
+                                ❤️ Favorites (<span id="fav-models-count">0</span>)
+                            </button>
+                        </div>
+                    </div>
+                    <div id="models-list"></div>
                 </div>
 
-                <div id="host-action-box" style="display: none; margin-bottom: 14px;">
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn-host-room" style="flex: 1;" onclick="createGroupRoom()">
+                <!-- CREATOR / MODEL STUDIO VIEW -->
+                <div id="creator-studio-view" style="display: none;">
+                    <!-- Online Receiving Card -->
+                    <div style="background: linear-gradient(135deg, rgba(0, 230, 118, 0.12) 0%, rgba(0, 176, 255, 0.08) 100%); border: 1px solid rgba(0, 230, 118, 0.3); border-radius: 18px; padding: 18px; margin-bottom: 14px; text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 6px;">🟢</div>
+                        <div style="font-size: 1.05rem; font-weight: 800; color: #00E676; margin-bottom: 4px;">Creator Online & Receiving</div>
+                        <div style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4;">
+                            Your profile is active on the network. Incoming calls from users will ring on this screen in real time.
+                        </div>
+                    </div>
+
+                    <!-- Creator Earnings & Metrics Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                        <div style="background: #171D2A; border: 1px solid var(--border-color); border-radius: 14px; padding: 14px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Voice Rate</div>
+                            <div style="font-size: 1.2rem; font-weight: 800; color: #FF3366;" id="studio-voice-rate">₹10 / min</div>
+                        </div>
+                        <div style="background: #171D2A; border: 1px solid var(--border-color); border-radius: 14px; padding: 14px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Video Rate</div>
+                            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-purple);" id="studio-video-rate">₹20 / min</div>
+                        </div>
+                    </div>
+
+                    <!-- Host Controls -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                        <button class="btn-host-room" style="flex: 1; padding: 12px;" onclick="createGroupRoom()">
                             🎙️ Start Audio Lounge
                         </button>
-                        <button class="btn-host-room" style="flex: 1; background: linear-gradient(135deg, #7C4DFF 0%, #651FFF 100%);" onclick="openModelOnboardingModal()">
+                        <button class="btn-host-room" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #7C4DFF 0%, #651FFF 100%);" onclick="openModelOnboardingModal()">
                             ⚙️ Pricing & KYC
                         </button>
                     </div>
-                </div>
 
-                <div class="section-title">
-                    <span>👥 Group Audio Lounges</span>
-                    <span style="font-size: 0.72rem; color: var(--accent-purple); font-weight: 700;">Multi-User Live</span>
-                </div>
-                <div id="rooms-list"></div>
-
-                <div class="section-title">
-                    <span>🔥 1-on-1 Voice Hosts</span>
-                    <div class="filter-pills">
-                        <button class="filter-pill active" id="filter-all-btn" onclick="setModelFilter('all')">
-                            🌟 All (<span id="all-models-count">0</span>)
-                        </button>
-                        <button class="filter-pill" id="filter-fav-btn" onclick="setModelFilter('favorites')">
-                            ❤️ Favorites (<span id="fav-models-count">0</span>)
-                        </button>
+                    <!-- Privacy & Guidelines Notice -->
+                    <div class="privacy-badge">
+                        <span>🛡️</span>
+                        <div>
+                            <strong>Creator Protection Policy</strong><br>
+                            All calls are billed by the second directly to your creator balance. Real-time payouts are processed via UPI.
+                        </div>
                     </div>
                 </div>
-                <div id="models-list"></div>
             </div>
 
             <div id="tab-history" style="display: none;">
@@ -1520,8 +1555,26 @@
             document.getElementById('header-logout-btn').style.display = 'flex';
             document.getElementById('current-user-status').innerHTML = `<span>🟢</span> <strong>${currentUser.name}</strong> <span style="font-size: 0.65rem; background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 6px; text-transform: uppercase;">${currentUser.role}</span>`;
             
-            document.getElementById('host-action-box').style.display = currentUser.role === 'model' ? 'block' : 'none';
-            document.getElementById('bonus-banner').style.display = currentUser.role === 'model' ? 'none' : 'flex';
+            const isModel = currentUser.role === 'model';
+            const callerDiscovery = document.getElementById('caller-discovery-view');
+            const creatorStudio = document.getElementById('creator-studio-view');
+            const navModelsBtn = document.getElementById('nav-models-btn');
+
+            if (isModel) {
+                if (callerDiscovery) callerDiscovery.style.display = 'none';
+                if (creatorStudio) creatorStudio.style.display = 'block';
+                if (navModelsBtn) navModelsBtn.innerHTML = `<span>⭐</span><span>Studio</span>`;
+                
+                const voiceRateEl = document.getElementById('studio-voice-rate');
+                const videoRateEl = document.getElementById('studio-video-rate');
+                if (voiceRateEl && currentUser.voice_rate_per_min) voiceRateEl.innerText = `₹${currentUser.voice_rate_per_min} / min`;
+                if (videoRateEl && currentUser.video_rate_per_min) videoRateEl.innerText = `₹${currentUser.video_rate_per_min} / min`;
+            } else {
+                if (callerDiscovery) callerDiscovery.style.display = 'block';
+                if (creatorStudio) creatorStudio.style.display = 'none';
+                if (navModelsBtn) navModelsBtn.innerHTML = `<span>🔥</span><span>Discover</span>`;
+            }
+
             updateWalletDisplay(balance);
         }
 
