@@ -94,6 +94,14 @@ func (uc *AuthUseCase) GetModelByID(modelID string) (*dto.ModelCardDTO, error) {
 	return uc.mapper.ToModelCardDTO(user), nil
 }
 
+func (uc *AuthUseCase) ListAvailableUsers() (*dto.ModelListResponse, error) {
+	users, err := uc.userRepo.ListOnlineUsers()
+	if err != nil {
+		return nil, err
+	}
+	return uc.mapper.ToAvailableUsersListResponse(users), nil
+}
+
 // 2. Wallet UseCase
 type WalletUseCase struct {
 	walletRepo repository.WalletRepository

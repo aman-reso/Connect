@@ -621,6 +621,31 @@ func (r *userRepo) ListModels() ([]*domain.User, error) {
 	return list, nil
 }
 
+func (r *userRepo) ListOnlineUsers() ([]*domain.User, error) {
+	rows, err := r.db.Query(`
+		SELECT id, phone, name, role, avatar_url, bio, COALESCE(age, 21), COALESCE(gender, 'male'), COALESCE(city, 'New Delhi'), COALESCE(state, 'Delhi'), COALESCE(country, 'India'), COALESCE(latitude, 0), COALESCE(longitude, 0), COALESCE(rating, 5.0), COALESCE(review_count, 0), COALESCE(total_calls_count, 0), COALESCE(total_minutes_spoken, 0), voice_rate_per_min, COALESCE(video_rate_per_min, 20.0), group_rate_per_min, chat_rate_per_msg, is_online, is_busy, created_at
+		FROM users WHERE role = 'user' ORDER BY is_online DESC, created_at DESC LIMIT 50
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(
+			&u.ID, &u.Phone, &u.Name, &u.Role, &u.AvatarURL, &u.Bio,
+			&u.Age, &u.Gender, &u.City, &u.State, &u.Country, &u.Latitude, &u.Longitude,
+			&u.Rating, &u.ReviewCount, &u.TotalCallsCount, &u.TotalMinutesSpoken,
+			&u.VoiceRatePerMin, &u.VideoRatePerMin, &u.GroupRatePerMin, &u.ChatRatePerMsg, &u.IsOnline, &u.IsBusy, &u.CreatedAt,
+		); err == nil {
+			list = append(list, &u)
+		}
+	}
+	return list, nil
+}
+
 func (r *userRepo) ListModelsAdvanced(filter *domain.ModelFilterParams) ([]*domain.ModelItem, int, error) {
 	if filter.Page <= 0 {
 		filter.Page = 1

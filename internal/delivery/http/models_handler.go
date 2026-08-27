@@ -16,24 +16,17 @@ func (h *HTTPHandler) HandleModels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Role-based backend check: If caller has role 'model', do not return model discovery catalog
+	// 1. Role-based backend check: If caller has role 'model', return list of online/available callers!
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	token = strings.TrimSpace(token)
 	if token != "" {
 		if u, err := h.authUC.ValidateToken(token); err == nil && u != nil && u.Role == domain.RoleModel {
-			SendJSON(w, http.StatusOK, "Creator view: model discovery is restricted for creator profiles", &dto.ModelListResponse{
-				Count: 0,
-				Pagination: dto.PaginationMeta{
-					CurrentPage: 1,
-					Limit:       0,
-					TotalCount:  0,
-					TotalPages:  1,
-					HasNext:     false,
-					HasPrev:     false,
-				},
-				FiltersApplied: map[string]interface{}{"role": "model"},
-				Models:         []*dto.ModelCardDTO{},
-			})
+			users, err := h.authUC.ListAvailableUsers()
+			if err != nil {
+				SendError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			SendJSON(w, http.StatusOK, "Available online callers fetched successfully", users)
 			return
 		}
 	}

@@ -133,6 +133,60 @@ func (m *Mapper) ToModelCardDTO(u *domain.User) *dto.ModelCardDTO {
 	}
 }
 
+func (m *Mapper) ToAvailableUsersListResponse(users []*domain.User) *dto.ModelListResponse {
+	var cards []*dto.ModelCardDTO
+	for _, u := range users {
+		avatar := u.AvatarURL
+		if avatar == "" {
+			avatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400"
+		}
+		bio := u.Bio
+		if bio == "" {
+			bio = "Looking to connect with awesome creators 🎧"
+		}
+		city := u.City
+		if city == "" {
+			city = "New Delhi"
+		}
+		cards = append(cards, &dto.ModelCardDTO{
+			ID:                 u.ID,
+			Name:               u.Name,
+			DisplayName:        u.Name,
+			Role:               string(u.Role),
+			AvatarURL:          avatar,
+			Bio:                bio,
+			Age:                u.Age,
+			Gender:             u.Gender,
+			City:               city,
+			State:              u.State,
+			Country:            u.Country,
+			IsOnline:           u.IsOnline,
+			IsBusy:             u.IsBusy,
+			Languages:          []string{"English", "Hindi"},
+			Interests:          []string{"Conversations", "Music"},
+			VoiceRatePerMin:    0,
+			VideoRatePerMin:    0,
+			GroupRatePerMin:    0,
+			ChatRatePerMsg:     0,
+			Badges:             []string{"Active Caller"},
+			CreatedAt:          u.CreatedAt,
+		})
+	}
+	return &dto.ModelListResponse{
+		Count: len(cards),
+		Pagination: dto.PaginationMeta{
+			CurrentPage: 1,
+			Limit:       len(cards),
+			TotalCount:  len(cards),
+			TotalPages:  1,
+			HasNext:     false,
+			HasPrev:     false,
+		},
+		FiltersApplied: map[string]interface{}{"role": "user", "view": "available_callers"},
+		Models:         cards,
+	}
+}
+
 func (m *Mapper) ToPaginatedModelListResponse(items []*domain.ModelItem, totalCount int, filter *dto.ModelFilterQuery) *dto.ModelListResponse {
 	var cards []*dto.ModelCardDTO
 	for _, it := range items {

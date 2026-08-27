@@ -227,6 +227,72 @@ func (d *memoryData) seedDefaultModels() {
 			UpdatedAt:       time.Now(),
 		}
 	}
+
+	seedUsers := []*domain.User{
+		{
+			ID:          "user-1",
+			Phone:       "9876500001",
+			Name:        "Rahul Sharma",
+			Role:        domain.RoleUser,
+			AvatarURL:   "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
+			Bio:         "Love music & casual late-night conversations 🎧",
+			Age:         24,
+			Gender:      "male",
+			City:        "Mumbai",
+			State:       "Maharashtra",
+			Country:     "India",
+			IsOnline:    true,
+			IsBusy:      false,
+			CreatedAt:   time.Now().Add(-5 * 24 * time.Hour),
+		},
+		{
+			ID:          "user-2",
+			Phone:       "9876500002",
+			Name:        "Sameer Khan",
+			Role:        domain.RoleUser,
+			AvatarURL:   "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400",
+			Bio:         "Software engineer looking for friendly talk 💻",
+			Age:         26,
+			Gender:      "male",
+			City:        "Bangalore",
+			State:       "Karnataka",
+			Country:     "India",
+			IsOnline:    true,
+			IsBusy:      false,
+			CreatedAt:   time.Now().Add(-3 * 24 * time.Hour),
+		},
+		{
+			ID:          "user-3",
+			Phone:       "9876500003",
+			Name:        "Rohan Gupta",
+			Role:        domain.RoleUser,
+			AvatarURL:   "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+			Bio:         "Cinema enthusiast & traveler 🎬",
+			Age:         23,
+			Gender:      "male",
+			City:        "Delhi",
+			State:       "Delhi",
+			Country:     "India",
+			IsOnline:    true,
+			IsBusy:      false,
+			CreatedAt:   time.Now().Add(-1 * 24 * time.Hour),
+		},
+	}
+
+	for _, u := range seedUsers {
+		d.users[u.ID] = u
+		tok := fmt.Sprintf("token_%s_seed", u.ID)
+		d.tokens[tok] = u.ID
+		u.ActiveToken = tok
+		d.wallets[u.ID] = &domain.Wallet{
+			UserID:      u.ID,
+			Balance:     50.0,
+			BonusGiven:  50.0,
+			TotalSpent:  0,
+			TotalEarned: 0,
+			UpdatedAt:   time.Now(),
+		}
+	}
 }
 
 func (d *memoryData) startEphemeralCleaner() {
@@ -416,6 +482,19 @@ func (r *memUserRepo) ListModels() ([]*domain.User, error) {
 	var list []*domain.User
 	for _, u := range r.data.users {
 		if u.Role == domain.RoleModel {
+			list = append(list, u)
+		}
+	}
+	return list, nil
+}
+
+func (r *memUserRepo) ListOnlineUsers() ([]*domain.User, error) {
+	r.data.mu.RLock()
+	defer r.data.mu.RUnlock()
+
+	var list []*domain.User
+	for _, u := range r.data.users {
+		if u.Role == domain.RoleUser {
 			list = append(list, u)
 		}
 	}

@@ -1184,6 +1184,13 @@
                         </button>
                     </div>
 
+                    <!-- Available Online Callers List for Creator -->
+                    <div class="section-title" style="margin-top: 18px;">
+                        <span>👥 Available Callers Online (<span id="studio-callers-count">0</span>)</span>
+                        <span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700;">Live</span>
+                    </div>
+                    <div id="creator-callers-list" style="margin-bottom: 14px;"></div>
+
                     <!-- Privacy & Guidelines Notice -->
                     <div class="privacy-badge">
                         <span>🛡️</span>
@@ -2177,17 +2184,69 @@
         async function loadModels() {
             try {
                 await loadFavorites();
-                const res = await fetch('/api/models');
+                const headers = {};
+                if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+                const res = await fetch('/api/models', { headers });
                 const data = await res.json();
-                cachedModelsList = data.models || [];
+                cachedModelsList = (data.data && data.data.models) || data.models || [];
                 updateFavoriteBadges();
                 renderModels();
             } catch (e) {
-                console.error("Error loading models", e);
+                console.error("Error loading models/users", e);
             }
         }
 
         function renderModels() {
+            const isModel = currentUser && currentUser.role === 'model';
+            
+            // ── CREATOR VIEW: Render Available Online Callers ──
+            if (isModel) {
+                const studioList = document.getElementById('creator-callers-list');
+                const countEl = document.getElementById('studio-callers-count');
+                if (countEl) countEl.innerText = cachedModelsList.length;
+                if (!studioList) return;
+
+                studioList.innerHTML = '';
+                if (cachedModelsList.length === 0) {
+                    studioList.innerHTML = `
+                        <div class="empty-fav-card">
+                            <span class="icon">👥</span>
+                            <strong style="color: #fff;">No Active Callers Online Right Now</strong>
+                            <p style="margin-top: 4px; font-size: 0.72rem;">When users come online looking for creators, they will appear here live.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                cachedModelsList.forEach(user => {
+                    const card = document.createElement('div');
+                    card.className = 'model-card';
+                    card.style.background = '#171D2A';
+                    card.innerHTML = `
+                        <div class="avatar-wrap">
+                            <img src="${user.avatar_url}" alt="${user.name}">
+                            <div class="online-dot is-live"></div>
+                        </div>
+                        <div class="model-info">
+                            <div class="model-name" style="color: white; font-weight: 700;">${user.name}</div>
+                            <div class="model-bio">${user.bio || 'Looking for live conversations 🎧'}</div>
+                            <div class="pricing-tag">
+                                <span>📍 ${user.city || 'India'}</span>
+                                <span style="color: var(--accent-green);">🟢 Ready to Call</span>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-chat" onclick="openChat('${user.id}', '${user.name.replace(/'/g, "\\'")}')">
+                                💬 Message
+                            </button>
+                        </div>
+                    `;
+                    studioList.appendChild(card);
+                });
+                return;
+            }
+
+            // ── CALLER / USER VIEW: Render Model Catalog ──
             const container = document.getElementById('models-list');
             if (!container) return;
             container.innerHTML = '';
