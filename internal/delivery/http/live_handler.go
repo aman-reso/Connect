@@ -126,10 +126,18 @@ func (h *HTTPHandler) HandleEndLive(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	liveStreamsMu.Lock()
-	stream, exists := liveStreams[req.StreamID]
-	if exists && stream.HostID == user.ID {
-		stream.IsActive = false
-		delete(liveStreams, req.StreamID)
+	if req.StreamID != "" {
+		if stream, exists := liveStreams[req.StreamID]; exists {
+			stream.IsActive = false
+			delete(liveStreams, req.StreamID)
+		}
+	}
+	// Also remove any active stream where HostID matches this user
+	for id, stream := range liveStreams {
+		if stream.HostID == user.ID {
+			stream.IsActive = false
+			delete(liveStreams, id)
+		}
 	}
 	liveStreamsMu.Unlock()
 
