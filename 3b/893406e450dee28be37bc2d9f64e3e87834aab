@@ -1,0 +1,32 @@
+ScreenTime
+  h_9c8c4b23da7963 1
+go.mod
+  h_9c8c4b23da7963 6-9
+go.sum
+  h_9c8c4b23da7963 1-2
+internal/delivery/http/live_handler.go
+  h_9c8c4b23da7963 1-309
+internal/delivery/http/livekit_handler.go
+  h_9c8c4b23da7963 1-115
+internal/delivery/http/wallet_handler.go
+  h_9c8c4b23da7963 43-46,51
+internal/delivery/ws/types.go
+  h_9c8c4b23da7963 33-46,58-61,82,87-98
+main.go
+  h_9c8c4b23da7963 126,131,134-140
+reset_database.sql
+  h_9c8c4b23da7963 112-128
+schema.sql
+  h_9c8c4b23da7963 102-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3b893406e450dee28be37bc2d9f64e3e87834aab",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
