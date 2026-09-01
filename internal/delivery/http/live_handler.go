@@ -146,10 +146,9 @@ func (h *HTTPHandler) HandleEndLive(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /api/live/list
 func (h *HTTPHandler) HandleLiveList(w http.ResponseWriter, r *http.Request) {
 	liveStreamsMu.RLock()
-	var list []*LiveStreamInfo
+	var list []*LiveStreamInfo = make([]*LiveStreamInfo, 0)
 	for _, s := range liveStreams {
 		if s.IsActive {
 			list = append(list, s)
@@ -157,36 +156,8 @@ func (h *HTTPHandler) HandleLiveList(w http.ResponseWriter, r *http.Request) {
 	}
 	liveStreamsMu.RUnlock()
 
-	demoStreams := []*LiveStreamInfo{
-		{
-			StreamID:    "live_demo_1",
-			HostID:      "m1",
-			HostName:    "Riya Gosh",
-			HostAvatar:  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-			Title:       "Late night vibe & music 🎵",
-			ViewerCount: 142,
-			TotalEarned: 1540.0,
-			StartedAt:   time.Now().Add(-25 * time.Minute),
-			IsActive:    true,
-		},
-		{
-			StreamID:    "live_demo_2",
-			HostID:      "m2",
-			HostName:    "Ananya Sharma",
-			HostAvatar:  "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80",
-			Title:       "Q&A and chill chat ✨",
-			ViewerCount: 89,
-			TotalEarned: 890.0,
-			StartedAt:   time.Now().Add(-12 * time.Minute),
-			IsActive:    true,
-		},
-	}
-
-	// Always prepend real active live model streams first
-	combined := append(list, demoStreams...)
-
 	SendJSON(w, http.StatusOK, "Active live streams", map[string]any{
-		"streams": combined,
+		"streams": list,
 	})
 }
 
