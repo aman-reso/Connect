@@ -1,0 +1,14 @@
+internal/delivery/http/live_handler.go
+  h_9c8c4b23da7963 129-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ba96d56893d35dbf100ac205fde9a9305f77989b",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
