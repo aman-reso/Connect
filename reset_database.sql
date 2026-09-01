@@ -109,6 +109,23 @@ CREATE TABLE group_rooms (
     ended_at TIMESTAMP WITH TIME ZONE
 );
 
+-- 6.1 CREATE LIVE STREAM AUDIT TABLE (METADATA & PAYMENTS ONLY)
+CREATE TABLE IF NOT EXISTS live_stream_records (
+    id VARCHAR(64) PRIMARY KEY,
+    host_id VARCHAR(64) NOT NULL REFERENCES users(id),
+    host_name VARCHAR(100) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ended_at TIMESTAMP WITH TIME ZONE,
+    duration_seconds INT NOT NULL DEFAULT 0,
+    peak_viewers INT NOT NULL DEFAULT 1,
+    total_earned NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_streams_host ON live_stream_records(host_id);
+
 -- 7. CREATE ROOM PARTICIPANTS TABLE
 CREATE TABLE room_participants (
     id VARCHAR(64) PRIMARY KEY,

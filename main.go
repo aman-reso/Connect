@@ -123,11 +123,20 @@ func main() {
 	mux.HandleFunc("/api/models/favorite-ids", httpDelivery.HandleGetFavoriteIDs)
 	mux.HandleFunc("/api/rooms", httpDelivery.HandleRooms)
 	mux.HandleFunc("/api/wallet", httpDelivery.HandleWallet)
+	mux.HandleFunc("/api/wallet/recharge", httpDelivery.HandleWallet)
 	mux.HandleFunc("/api/wallet/packs", httpDelivery.HandleWalletPackages)
 	mux.HandleFunc("/api/wallet/packages", httpDelivery.HandleWalletPackages)
 	mux.HandleFunc("/api/calls/check-balance", httpDelivery.HandleCheckCallBalance)
 	mux.HandleFunc("/api/calls/check", httpDelivery.HandleCheckCallBalance)
+	mux.HandleFunc("/api/calls/token", httpDelivery.HandleCallToken)
 	mux.HandleFunc("/api/history/calls", httpDelivery.HandleHistory)
+
+	// 1-to-Many Live Broadcasting Routes
+	mux.HandleFunc("/api/live/start", httpDelivery.HandleStartLive)
+	mux.HandleFunc("/api/live/end", httpDelivery.HandleEndLive)
+	mux.HandleFunc("/api/live/list", httpDelivery.HandleLiveList)
+	mux.HandleFunc("/api/live/join", httpDelivery.HandleJoinLive)
+	mux.HandleFunc("/api/live/tip", httpDelivery.HandleTipLive)
 
 	// Ephemeral 24-Hour Chat Routes
 	mux.HandleFunc("/api/chat/conversations", httpDelivery.HandleChatConversations)

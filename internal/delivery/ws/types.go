@@ -25,12 +25,25 @@ const (
 	TypeGroupUserJoined     = "GROUP_USER_JOINED"
 	TypeGroupUserLeft       = "GROUP_USER_LEFT"
 	TypeGroupTick           = "GROUP_TICK"
-	TypeGroupKickExhausted  = "GROUP_KICK_BALANCE_EXHAUSTED"
 	TypeWebRTCOffer         = "WEBRTC_OFFER"
 	TypeWebRTCAnswer        = "WEBRTC_ANSWER"
 	TypeWebRTCICECandidate  = "WEBRTC_ICE_CANDIDATE"
 	TypeChatMessage         = "CHAT_MESSAGE"
 	TypeChatReceived        = "CHAT_RECEIVED"
+
+	// Dedicated Video Call signaling constants
+	TypeVideoCallRequest    = "VIDEO_CALL_REQUEST"
+	TypeIncomingVideoCall   = "INCOMING_VIDEO_CALL"
+	TypeVideoCallAccept     = "VIDEO_CALL_ACCEPT"
+	TypeVideoCallActive     = "VIDEO_CALL_ACTIVE"
+	TypeVideoCallReject     = "VIDEO_CALL_REJECT"
+	TypeVideoCallRejected   = "VIDEO_CALL_REJECTED"
+	TypeVideoCallEnd        = "VIDEO_CALL_END"
+	TypeVideoCallEnded      = "VIDEO_CALL_ENDED"
+	TypeVideoCallTick       = "VIDEO_CALL_TICK"
+	TypeVideoOffer          = "VIDEO_OFFER"
+	TypeVideoAnswer         = "VIDEO_ANSWER"
+	TypeVideoICECandidate   = "VIDEO_ICE_CANDIDATE"
 )
 
 // SignalMessage is the envelope for WebSocket signaling messages supporting Android and Web clients.
@@ -42,6 +55,10 @@ type SignalMessage struct {
 	CallerName    string  `json:"caller_name,omitempty"`
 	CallerAvatar  string  `json:"caller_avatar,omitempty"`
 	ReceiverID    string  `json:"receiver_id,omitempty"`
+	TargetUserID  string  `json:"target_user_id,omitempty"`
+	TargetID      string  `json:"target_id,omitempty"`
+	ModelID       string  `json:"model_id,omitempty"`
+	UserID        string  `json:"user_id,omitempty"`
 	FromUserID    string  `json:"from_user_id,omitempty"`
 	ToUserID      string  `json:"to_user_id,omitempty"`
 	CallType      string  `json:"call_type,omitempty"`
@@ -62,10 +79,22 @@ type SignalMessage struct {
 	Payload       any     `json:"payload,omitempty"`
 }
 
-// GetTargetUserID returns receiver ID or to_user_id.
+// GetTargetUserID returns receiver ID or to_user_id or any target ID alias.
 func (m *SignalMessage) GetTargetUserID() string {
 	if m.ReceiverID != "" {
 		return m.ReceiverID
+	}
+	if m.TargetUserID != "" {
+		return m.TargetUserID
+	}
+	if m.TargetID != "" {
+		return m.TargetID
+	}
+	if m.ModelID != "" {
+		return m.ModelID
+	}
+	if m.UserID != "" {
+		return m.UserID
 	}
 	return m.ToUserID
 }

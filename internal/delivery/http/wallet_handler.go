@@ -40,12 +40,15 @@ func (h *HTTPHandler) HandleWallet(w http.ResponseWriter, r *http.Request) {
 			SendError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
-		wallet, err := h.walletUC.Recharge(userID, req.Amount)
+		if req.Amount <= 0 {
+			req.Amount = 100 // default minimum direct top-up
+		}
+		walletRes, err := h.walletUC.Recharge(userID, req.Amount)
 		if err != nil {
 			SendError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		SendJSON(w, http.StatusOK, "Recharge successful", wallet)
+		SendJSON(w, http.StatusOK, "Recharge successful", walletRes.Wallet)
 	default:
 		SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}

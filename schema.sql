@@ -99,6 +99,24 @@ CREATE TABLE IF NOT EXISTS group_rooms (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 6. Live Stream Audit Records (METADATA & FINANCIAL AUDIT ONLY - ZERO VIDEO/CHAT STORED)
+CREATE TABLE IF NOT EXISTS live_stream_records (
+    id VARCHAR(64) PRIMARY KEY, -- stream_id / room_id
+    host_id VARCHAR(64) NOT NULL REFERENCES users(id),
+    host_name VARCHAR(100) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ended_at TIMESTAMP WITH TIME ZONE,
+    duration_seconds INT NOT NULL DEFAULT 0,
+    peak_viewers INT NOT NULL DEFAULT 1,
+    total_earned NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_streams_host ON live_stream_records(host_id);
+CREATE INDEX IF NOT EXISTS idx_live_streams_created ON live_stream_records(created_at DESC);
+
 -- 6. Ephemeral Chat Messages Table (Auto-Expiring with TTL)
 CREATE TABLE IF NOT EXISTS ephemeral_messages (
     id VARCHAR(64) PRIMARY KEY,
