@@ -1,0 +1,16 @@
+ScreenTime
+  h_9c8c4b23da7963 1
+internal/delivery/http/live_handler.go
+  h_9c8c4b23da7963 151,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b97e8d71c234d756dc8fa3ebf44054afc8504b27",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
