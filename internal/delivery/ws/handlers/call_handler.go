@@ -32,6 +32,7 @@ func (h *CallHandler) SupportedTypes() []string {
 		ws.TypeCallRequest,
 		ws.TypeCallAccept,
 		ws.TypeCallReject,
+		ws.TypeCallCancel,
 		ws.TypeCallEnd,
 	}
 }
@@ -45,6 +46,8 @@ func (h *CallHandler) Handle(client *ws.Client, msg *ws.SignalMessage) error {
 		h.handleCallAccept(client, msg)
 	case ws.TypeCallReject:
 		h.handleCallReject(client, msg)
+	case ws.TypeCallCancel:
+		h.handleCallCancel(client, msg)
 	case ws.TypeCallEnd:
 		h.handleCallEnd(client, msg)
 	}
@@ -91,7 +94,18 @@ func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage
 		return
 	}
 
-	// 2. Check Receiver Online Presence in WebSocket Hub
+	// 2. Check Caller Busy State
+	if _, isCallerBusy := h.hub.GetUserCallID(client.UserID); isCallerBusy || h.callUC.IsUserBusy(client.UserID) {
+		ws.SendToClient(client, &ws.SignalMessage{
+			Type:       ws.TypeCallBusy,
+			CallerID:   client.UserID,
+			ReceiverID: receiverID,
+			Reason:     "You are currently in another call session",
+		})
+		return
+	}
+
+	// 3. Check Receiver Online Presence in WebSocket Hub
 	if !h.hub.IsUserOnline(receiverID) {
 		ws.SendToClient(client, &ws.SignalMessage{
 			Type:       ws.TypeCallOffline,
@@ -102,8 +116,8 @@ func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage
 		return
 	}
 
-	// 3. Check if Receiver or Caller is Busy on another call
-	if _, isBusy := h.hub.GetUserCallID(receiverID); isBusy {
+	// 4. Check if Receiver is Busy on another call or marked busy
+	if _, isReceiverBusy := h.hub.GetUserCallID(receiverID); isReceiverBusy || h.callUC.IsUserBusy(receiverID) {
 		ws.SendToClient(client, &ws.SignalMessage{
 			Type:       ws.TypeCallBusy,
 			CallerID:   client.UserID,
@@ -113,7 +127,7 @@ func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage
 		return
 	}
 
-	// 4. Create Call Record in Database/Repository
+	// 5. Create Call Record in Database/Repository
 	callerUser := client.User
 	if callerUser == nil {
 		callerUser = &domain.User{ID: client.UserID, Name: "User_" + client.UserID}
@@ -127,7 +141,7 @@ func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage
 		return
 	}
 
-	// 5. Register Active Session in Hub
+	// 6. Register Active Session in Hub
 	session := &ws.ActiveCallSession{
 		CallID:         record.ID,
 		CallerID:       record.CallerID,
@@ -138,6 +152,12 @@ func (h *CallHandler) handleCallRequest(client *ws.Client, msg *ws.SignalMessage
 		StopTickerChan: make(chan struct{}),
 	}
 	h.hub.RegisterCallSession(session)
+
+	// 7. Mark both Caller and Receiver as BUSY in presence engine
+	_ = h.callUC.SetPresence(client.UserID, true, true)
+	_ = h.callUC.SetPresence(receiverID, true, true)
+	h.hub.BroadcastPresence(client.UserID, true)
+	h.hub.BroadcastPresence(receiverID, true)
 
 	// 6. Deliver INCOMING_CALL to Receiver
 	log.Printf("📞 Routing INCOMING_CALL %s (%s) -> %s (Rate: ₹%.2f/min, CallID=%s)",
@@ -223,7 +243,11 @@ func (h *CallHandler) handleCallReject(client *ws.Client, msg *ws.SignalMessage)
 	if callID != "" {
 		_ = h.callUC.RejectCall(callID)
 		session, _ := h.hub.EndCallSession(callID)
+		callerID := client.UserID
+		receiverID := client.UserID
 		if session != nil {
+			callerID = session.CallerID
+			receiverID = session.ReceiverID
 			h.hub.SendToUser(session.CallerID, &ws.SignalMessage{
 				Type:       ws.TypeCallRejected,
 				CallID:     callID,
@@ -232,6 +256,51 @@ func (h *CallHandler) handleCallReject(client *ws.Client, msg *ws.SignalMessage)
 				Reason:     "Call was declined",
 			})
 		}
+		_ = h.callUC.SetPresence(callerID, true, false)
+		_ = h.callUC.SetPresence(receiverID, true, false)
+		h.hub.BroadcastPresence(callerID, true)
+		h.hub.BroadcastPresence(receiverID, true)
+	}
+}
+
+func (h *CallHandler) handleCallCancel(client *ws.Client, msg *ws.SignalMessage) {
+	callID := msg.GetCallID()
+	if callID == "" {
+		if cid, ok := h.hub.GetUserCallID(client.UserID); ok {
+			callID = cid
+		}
+	}
+
+	if callID != "" {
+		_ = h.callUC.RejectCall(callID)
+		session, _ := h.hub.EndCallSession(callID)
+		callerID := client.UserID
+		receiverID := msg.GetTargetUserID()
+		if session != nil {
+			callerID = session.CallerID
+			receiverID = session.ReceiverID
+			h.hub.SendToUser(session.ReceiverID, &ws.SignalMessage{
+				Type:       ws.TypeCallCancelled,
+				CallID:     callID,
+				CallerID:   session.CallerID,
+				ReceiverID: session.ReceiverID,
+				Reason:     "Caller cancelled the call",
+			})
+		} else if receiverID != "" {
+			h.hub.SendToUser(receiverID, &ws.SignalMessage{
+				Type:       ws.TypeCallCancelled,
+				CallID:     callID,
+				CallerID:   callerID,
+				ReceiverID: receiverID,
+				Reason:     "Caller cancelled the call",
+			})
+		}
+		_ = h.callUC.SetPresence(callerID, true, false)
+		if receiverID != "" {
+			_ = h.callUC.SetPresence(receiverID, true, false)
+			h.hub.BroadcastPresence(receiverID, true)
+		}
+		h.hub.BroadcastPresence(callerID, true)
 	}
 }
 
@@ -338,9 +407,11 @@ func (h *CallHandler) endCall(callID, reason, triggeredBy string) {
 
 	if callerID != "" {
 		_ = h.callUC.SetPresence(callerID, true, false)
+		h.hub.BroadcastPresence(callerID, true)
 	}
 	if receiverID != "" {
 		_ = h.callUC.SetPresence(receiverID, true, false)
+		h.hub.BroadcastPresence(receiverID, true)
 	}
 
 	log.Printf("🔴 Call Settled: %s (Duration=%ds, Cost=₹%.2f, Reason='%s')",

@@ -141,6 +141,16 @@ func (uc *WalletUseCase) Recharge(userID string, amount float64) (*dto.WalletRes
 	return uc.mapper.ToWalletResponse(wallet, txs), nil
 }
 
+func (uc *WalletUseCase) DeductLiveFee(viewerID, hostID string, amount float64, description string) (*dto.WalletResponse, error) {
+	if amount <= 0 {
+		return nil, errors.New("invalid deduction amount")
+	}
+	if err := uc.walletRepo.DeductLiveFee(viewerID, hostID, amount, description); err != nil {
+		return nil, err
+	}
+	return uc.GetWallet(viewerID)
+}
+
 func (uc *WalletUseCase) GetWalletPacks() *dto.WalletPacksResponse {
 	packs := []*dto.WalletPackDTO{
 		{
@@ -378,6 +388,14 @@ func (uc *CallUseCase) EndCall(callID string, reason string) (float64, int, erro
 
 func (uc *CallUseCase) SetPresence(userID string, isOnline, isBusy bool) error {
 	return uc.userRepo.SetPresence(userID, isOnline, isBusy)
+}
+
+func (uc *CallUseCase) IsUserBusy(userID string) bool {
+	u, err := uc.userRepo.GetByID(userID)
+	if err != nil || u == nil {
+		return false
+	}
+	return u.IsBusy
 }
 
 func (uc *CallUseCase) GetHistory(userID string) (*dto.CallHistoryResponse, error) {

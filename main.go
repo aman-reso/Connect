@@ -130,6 +130,7 @@ func main() {
 	mux.HandleFunc("/api/calls/check", httpDelivery.HandleCheckCallBalance)
 	mux.HandleFunc("/api/calls/token", httpDelivery.HandleCallToken)
 	mux.HandleFunc("/api/history/calls", httpDelivery.HandleHistory)
+	mux.HandleFunc("/api/user/busy", httpDelivery.HandleUserBusyStatus)
 
 	// 1-to-Many Live Broadcasting Routes
 	mux.HandleFunc("/api/live/start", httpDelivery.HandleStartLive)
@@ -137,6 +138,9 @@ func main() {
 	mux.HandleFunc("/api/live/list", httpDelivery.HandleLiveList)
 	mux.HandleFunc("/api/live/join", httpDelivery.HandleJoinLive)
 	mux.HandleFunc("/api/live/tip", httpDelivery.HandleTipLive)
+	mux.HandleFunc("/api/live/paid_mode", httpDelivery.HandleTogglePaidMode)
+	mux.HandleFunc("/api/live/status", httpDelivery.HandleLiveStatus)
+	mux.HandleFunc("/api/live/deduct", httpDelivery.HandleDeductLiveCoins)
 
 	// Ephemeral 24-Hour Chat Routes
 	mux.HandleFunc("/api/chat/conversations", httpDelivery.HandleChatConversations)

@@ -24,12 +24,19 @@ func (h *ChatHandler) SupportedTypes() []string {
 // Handle forwards the chat message and acknowledges receipt.
 func (h *ChatHandler) Handle(client *ws.Client, msg *ws.SignalMessage) error {
 	msg.Timestamp = time.Now().Unix()
-	if msg.ToUserID != "" {
-		h.sender.SendToUser(msg.ToUserID, msg)
+	targetUserID := msg.GetTargetUserID()
+	if targetUserID != "" {
+		msg.ToUserID = targetUserID
+		msg.ReceiverID = targetUserID
+		if msg.FromUserID == "" && client != nil && client.UserID != "" {
+			msg.FromUserID = client.UserID
+			msg.CallerID = client.UserID
+		}
+		h.sender.SendToUser(targetUserID, msg)
 	}
 	ws.SendToClient(client, &ws.SignalMessage{
 		Type:      ws.TypeChatReceived,
-		ToUserID:  msg.ToUserID,
+		ToUserID:  targetUserID,
 		Timestamp: msg.Timestamp,
 	})
 	return nil

@@ -912,6 +912,44 @@ func (r *walletRepo) DeductChatFee(callerID, receiverID string, amount float64) 
 	return tx.Commit()
 }
 
+func (r *walletRepo) DeductLiveFee(viewerID, hostID string, amount float64, description string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var currentBalance float64
+	err = tx.QueryRow(`SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE`, viewerID).Scan(&currentBalance)
+	if err != nil || currentBalance < amount {
+		return fmt.Errorf("insufficient balance for live stream")
+	}
+
+	_, err = tx.Exec(`UPDATE wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE user_id = $2`, amount, viewerID)
+	if err != nil {
+		return err
+	}
+
+	modelShare := amount * 0.8
+	_, _ = tx.Exec(`UPDATE wallets SET balance = balance + $1, total_earned = total_earned + $1, updated_at = NOW() WHERE user_id = $2`, modelShare, hostID)
+
+	if description == "" {
+		description = fmt.Sprintf("Live stream token deduction to %s", hostID)
+	}
+
+	_, _ = tx.Exec(`
+		INSERT INTO transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+	`, uuid.New().String(), viewerID, -amount, domain.TxTypeLiveDebit, description)
+
+	_, _ = tx.Exec(`
+		INSERT INTO transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+	`, uuid.New().String(), hostID, modelShare, domain.TxTypeLiveCredit, fmt.Sprintf("Live Stream Earnings from %s", viewerID))
+
+	return tx.Commit()
+}
+
 // ----------------- CALL REPO -----------------
 type callRepo struct {
 	db      *sql.DB

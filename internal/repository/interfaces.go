@@ -23,6 +23,7 @@ type WalletRepository interface {
 	Recharge(userID string, amount float64) (*domain.Wallet, error)
 	ProcessCallSettlement(callerID, receiverID, callID string, durationSec int, ratePerMin float64, reason string) (float64, error)
 	DeductChatFee(callerID, receiverID string, amount float64) error
+	DeductLiveFee(viewerID, hostID string, amount float64, description string) error
 }
 
 type CallRepository interface {

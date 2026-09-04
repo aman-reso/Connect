@@ -712,6 +712,50 @@ func (r *memWalletRepo) DeductChatFee(callerID, receiverID string, amount float6
 	return nil
 }
 
+func (r *memWalletRepo) DeductLiveFee(viewerID, hostID string, amount float64, description string) error {
+	r.data.mu.Lock()
+	defer r.data.mu.Unlock()
+
+	w, ok := r.data.wallets[viewerID]
+	if !ok || w.Balance < amount {
+		return errors.New("insufficient balance for live stream")
+	}
+
+	w.Balance -= amount
+	w.TotalSpent += amount
+	w.UpdatedAt = time.Now()
+
+	modelShare := amount * 0.8
+	if mw, ok := r.data.wallets[hostID]; ok {
+		mw.Balance += modelShare
+		mw.TotalEarned += modelShare
+		mw.UpdatedAt = time.Now()
+	}
+
+	if description == "" {
+		description = fmt.Sprintf("Live stream token deduction to %s", hostID)
+	}
+
+	r.data.transactions[viewerID] = append(r.data.transactions[viewerID], &domain.Transaction{
+		ID:          uuid.New().String(),
+		UserID:      viewerID,
+		Amount:      -amount,
+		Type:        domain.TxTypeLiveDebit,
+		Description: description,
+		CreatedAt:   time.Now(),
+	})
+
+	r.data.transactions[hostID] = append(r.data.transactions[hostID], &domain.Transaction{
+		ID:          uuid.New().String(),
+		UserID:      hostID,
+		Amount:      modelShare,
+		Type:        domain.TxTypeLiveCredit,
+		Description: fmt.Sprintf("Live Stream Earnings from %s", viewerID),
+		CreatedAt:   time.Now(),
+	})
+	return nil
+}
+
 // ----------------- CALL REPOSITORY -----------------
 type memCallRepo struct {
 	data    *memoryData

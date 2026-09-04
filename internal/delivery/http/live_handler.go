@@ -13,15 +13,17 @@ import (
 )
 
 type LiveStreamInfo struct {
-	StreamID    string    `json:"stream_id"`
-	HostID      string    `json:"host_id"`
-	HostName    string    `json:"host_name"`
-	HostAvatar  string    `json:"host_avatar"`
-	Title       string    `json:"title"`
-	ViewerCount int       `json:"viewer_count"`
-	TotalEarned float64   `json:"total_earned"`
-	StartedAt   time.Time `json:"started_at"`
-	IsActive    bool      `json:"is_active"`
+	StreamID       string    `json:"stream_id"`
+	HostID         string    `json:"host_id"`
+	HostName       string    `json:"host_name"`
+	HostAvatar     string    `json:"host_avatar"`
+	Title          string    `json:"title"`
+	ViewerCount    int       `json:"viewer_count"`
+	TotalEarned    float64   `json:"total_earned"`
+	StartedAt      time.Time `json:"started_at"`
+	IsActive       bool      `json:"is_active"`
+	IsPaidMode     bool      `json:"is_paid_mode"`
+	CoinRatePerMin float64   `json:"coin_rate_per_min"`
 }
 
 type LiveCommentDto struct {
@@ -55,24 +57,31 @@ func (h *HTTPHandler) HandleStartLive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Title string `json:"title"`
+		Title          string  `json:"title"`
+		IsPaidMode     bool    `json:"is_paid_mode"`
+		CoinRatePerMin float64 `json:"coin_rate_per_min"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	if req.Title == "" {
 		req.Title = fmt.Sprintf("%s's Live Room", user.Name)
 	}
+	if req.CoinRatePerMin <= 0 {
+		req.CoinRatePerMin = 10.0
+	}
 
 	streamID := fmt.Sprintf("live_%s_%d", user.ID, time.Now().Unix())
 	stream := &LiveStreamInfo{
-		StreamID:    streamID,
-		HostID:      user.ID,
-		HostName:    user.Name,
-		HostAvatar:  user.AvatarURL,
-		Title:       req.Title,
-		ViewerCount: 1,
-		TotalEarned: 0,
-		StartedAt:   time.Now(),
-		IsActive:    true,
+		StreamID:       streamID,
+		HostID:         user.ID,
+		HostName:       user.Name,
+		HostAvatar:     user.AvatarURL,
+		Title:          req.Title,
+		ViewerCount:    1,
+		TotalEarned:    0,
+		StartedAt:      time.Now(),
+		IsActive:       true,
+		IsPaidMode:     req.IsPaidMode,
+		CoinRatePerMin: req.CoinRatePerMin,
 	}
 
 	liveStreamsMu.Lock()
@@ -256,6 +265,205 @@ func (h *HTTPHandler) HandleTipLive(w http.ResponseWriter, r *http.Request) {
 		"amount":    req.Amount,
 		"gift_name": req.GiftName,
 		"sender":    user.Name,
+	})
+}
+
+// POST /api/live/paid_mode
+func (h *HTTPHandler) HandleTogglePaidMode(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	user, err := h.authUC.ValidateToken(strings.TrimSpace(tokenStr))
+	if err != nil || user == nil {
+		SendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		StreamID       string  `json:"stream_id"`
+		IsPaidMode     bool    `json:"is_paid_mode"`
+		CoinRatePerMin float64 `json:"coin_rate_per_min"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if req.CoinRatePerMin <= 0 {
+		req.CoinRatePerMin = 10.0
+	}
+
+	liveStreamsMu.Lock()
+	stream, exists := liveStreams[req.StreamID]
+	if !exists {
+		for _, s := range liveStreams {
+			if s.HostID == user.ID && s.IsActive {
+				stream = s
+				exists = true
+				break
+			}
+		}
+	}
+
+	if !exists || stream == nil {
+		liveStreamsMu.Unlock()
+		SendError(w, http.StatusNotFound, "Live stream not found")
+		return
+	}
+
+	if stream.HostID != user.ID {
+		liveStreamsMu.Unlock()
+		SendError(w, http.StatusForbidden, "Only the host can configure paid mode")
+		return
+	}
+
+	stream.IsPaidMode = req.IsPaidMode
+	stream.CoinRatePerMin = req.CoinRatePerMin
+	copiedStream := *stream
+	liveStreamsMu.Unlock()
+
+	SendJSON(w, http.StatusOK, "Paid mode updated successfully", map[string]any{
+		"stream": &copiedStream,
+	})
+}
+
+// GET /api/live/status
+func (h *HTTPHandler) HandleLiveStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	streamID := r.URL.Query().Get("stream_id")
+	if streamID == "" {
+		SendError(w, http.StatusBadRequest, "stream_id is required")
+		return
+	}
+
+	liveStreamsMu.RLock()
+	stream, exists := liveStreams[streamID]
+	if !exists || !stream.IsActive {
+		liveStreamsMu.RUnlock()
+		SendJSON(w, http.StatusOK, "Stream not found or inactive", map[string]any{
+			"is_active": false,
+		})
+		return
+	}
+	copiedStream := *stream
+	liveStreamsMu.RUnlock()
+
+	SendJSON(w, http.StatusOK, "Stream status fetched", map[string]any{
+		"stream": &copiedStream,
+	})
+}
+
+// POST /api/live/deduct
+func (h *HTTPHandler) HandleDeductLiveCoins(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	user, err := h.authUC.ValidateToken(strings.TrimSpace(tokenStr))
+	if err != nil || user == nil {
+		SendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		StreamID        string `json:"stream_id"`
+		DurationSeconds int    `json:"duration_seconds"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	if req.DurationSeconds <= 0 {
+		req.DurationSeconds = 60
+	}
+
+	liveStreamsMu.Lock()
+	stream, exists := liveStreams[req.StreamID]
+	if !exists || !stream.IsActive {
+		liveStreamsMu.Unlock()
+		SendError(w, http.StatusNotFound, "Live stream is no longer active")
+		return
+	}
+
+	if !stream.IsPaidMode {
+		liveStreamsMu.Unlock()
+		walletResp, _ := h.walletUC.GetWallet(user.ID)
+		balance := 0.0
+		if walletResp != nil && walletResp.Wallet != nil {
+			balance = walletResp.Wallet.Balance
+		}
+		SendJSON(w, http.StatusOK, "Stream is free", map[string]any{
+			"success":           true,
+			"deducted":          0.0,
+			"balance":           balance,
+			"is_paid_mode":      false,
+			"coin_rate_per_min": stream.CoinRatePerMin,
+		})
+		return
+	}
+
+	ratePerMin := stream.CoinRatePerMin
+	if ratePerMin <= 0 {
+		ratePerMin = 10.0
+	}
+	cost := (ratePerMin / 60.0) * float64(req.DurationSeconds)
+	if cost < 0.1 {
+		cost = 0.1
+	}
+
+	// Check balance first
+	walletResp, err := h.walletUC.GetWallet(user.ID)
+	if err != nil || walletResp == nil || walletResp.Wallet == nil || walletResp.Wallet.Balance < cost {
+		currentBal := 0.0
+		if walletResp != nil && walletResp.Wallet != nil {
+			currentBal = walletResp.Wallet.Balance
+		}
+		liveStreamsMu.Unlock()
+		SendJSON(w, http.StatusOK, "Insufficient coin balance", map[string]any{
+			"success":           false,
+			"error":             "insufficient_balance",
+			"balance":           currentBal,
+			"required":          cost,
+			"is_paid_mode":      true,
+			"coin_rate_per_min": ratePerMin,
+		})
+		return
+	}
+
+	hostID := stream.HostID
+	stream.TotalEarned += cost
+	liveStreamsMu.Unlock()
+
+	// Deduct via wallet usecase
+	desc := fmt.Sprintf("Live stream view (%ds @ %.0f coins/min)", req.DurationSeconds, ratePerMin)
+	updatedWallet, err := h.walletUC.DeductLiveFee(user.ID, hostID, cost, desc)
+	newBalance := 0.0
+	if err == nil && updatedWallet != nil && updatedWallet.Wallet != nil {
+		newBalance = updatedWallet.Wallet.Balance
+	} else if updatedWallet != nil && updatedWallet.Wallet != nil {
+		newBalance = updatedWallet.Wallet.Balance
+	} else {
+		w2, _ := h.walletUC.GetWallet(user.ID)
+		if w2 != nil && w2.Wallet != nil {
+			newBalance = w2.Wallet.Balance
+		}
+	}
+
+	SendJSON(w, http.StatusOK, "Live stream coins deducted successfully", map[string]any{
+		"success":           true,
+		"deducted":          cost,
+		"balance":           newBalance,
+		"is_paid_mode":      true,
+		"coin_rate_per_min": ratePerMin,
 	})
 }
 

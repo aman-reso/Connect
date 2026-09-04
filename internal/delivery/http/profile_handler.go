@@ -58,3 +58,46 @@ func (h *HTTPHandler) HandleUserProfile(w http.ResponseWriter, r *http.Request) 
 
 	SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 }
+
+// HandleUserBusyStatus allows users or models to set their status as busy or available.
+// POST /api/user/busy
+// Body: {"is_busy": true|false}
+func (h *HTTPHandler) HandleUserBusyStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	token := r.Header.Get("Authorization")
+	token = strings.TrimPrefix(token, "Bearer ")
+	token = strings.TrimSpace(token)
+	if token == "" {
+		token = r.URL.Query().Get("token")
+	}
+
+	if token == "" {
+		SendError(w, http.StatusUnauthorized, "Authentication token required")
+		return
+	}
+
+	user, err := h.authUC.ValidateToken(token)
+	if err != nil || user == nil {
+		SendError(w, http.StatusUnauthorized, "Invalid or expired token")
+		return
+	}
+
+	var req struct {
+		IsBusy bool `json:"is_busy"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	_ = h.callUC.SetPresence(user.ID, true, req.IsBusy)
+	user.IsBusy = req.IsBusy
+	SendJSON(w, http.StatusOK, "Busy status updated successfully", map[string]any{
+		"user_id": user.ID,
+		"is_busy": req.IsBusy,
+	})
+}

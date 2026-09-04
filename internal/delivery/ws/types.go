@@ -10,6 +10,8 @@ const (
 	TypeCallRejected        = "CALL_REJECTED"
 	TypeCallEnd             = "CALL_END"
 	TypeCallEnded           = "CALL_ENDED"
+	TypeCallCancel          = "CALL_CANCEL"
+	TypeCallCancelled       = "CALL_CANCELLED"
 	TypeCallBusy            = "CALL_BUSY"
 	TypeCallOffline         = "CALL_OFFLINE"
 	TypeCallError           = "CALL_ERROR"

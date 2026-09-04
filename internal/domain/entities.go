@@ -77,6 +77,8 @@ const (
 	TxTypeGroupCredit  TransactionType = "group_call_credit"
 	TxTypeChatDebit    TransactionType = "chat_debit"
 	TxTypeChatCredit   TransactionType = "chat_credit"
+	TxTypeLiveDebit    TransactionType = "live_stream_debit"
+	TxTypeLiveCredit   TransactionType = "live_stream_credit"
 )
 
 // Transaction Entity (Financial Ledger)
