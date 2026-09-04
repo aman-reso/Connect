@@ -1,0 +1,14 @@
+ScreenTime
+  h_9c8c4b23da7963 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5d3e6dba951e6db2a2234d02aeefda8e771202da",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
