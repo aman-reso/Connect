@@ -1,0 +1,36 @@
+ScreenTime
+  h_9c8c4b23da7963 1
+internal/delivery/http/live_handler.go
+  h_9c8c4b23da7963 16-26,60-62,68-70,74-84,271-469
+internal/delivery/http/profile_handler.go
+  h_9c8c4b23da7963 61-103
+internal/delivery/ws/handlers/call_handler.go
+  h_9c8c4b23da7963 35,49-50,97-108,119-120,130,144,156-161,246-247,249-250,259-303,410,414
+internal/delivery/ws/handlers/chat_handler.go
+  h_9c8c4b23da7963 27-35,39
+internal/delivery/ws/types.go
+  h_9c8c4b23da7963 13-14
+internal/domain/entities.go
+  h_9c8c4b23da7963 80-81
+internal/repository/interfaces.go
+  h_9c8c4b23da7963 26
+internal/repository/memory/memory_repo.go
+  h_9c8c4b23da7963 715-758
+internal/repository/postgres/postgres_repo.go
+  h_9c8c4b23da7963 915-952
+internal/usecase/usecases.go
+  h_9c8c4b23da7963 144-153,393-400
+main.go
+  h_9c8c4b23da7963 133,141-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "67538a3675e74af97ba4b1fc6b6946d4c2fa3963",
+  "prompts": {},
+  "humans": {
+    "h_9c8c4b23da7963": {
+      "author": "AmanKumar <Aman.kumar@telekom-digital.com>"
+    }
+  }
+}
